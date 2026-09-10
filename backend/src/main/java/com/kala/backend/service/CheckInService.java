@@ -17,11 +17,13 @@ public class CheckInService {
 
     public void registrar(CheckInRequest request) {
 
-        validarEquipoId(request.equipoId());
+        if (request.equipoId() == null) {
+            throw new IllegalArgumentException("equipoId es obligatorio");
+        }
 
         LocalDate fecha = LocalDate.now();
 
-        String clave = clave(request.equipoId(), fecha);
+        String clave = request.equipoId() + "|" + fecha;
 
         CheckIn checkIn = checkIns.computeIfAbsent(
                 clave,
@@ -37,18 +39,12 @@ public class CheckInService {
 
     public CheckIn buscarAgregadoDeHoy(Long equipoId) {
 
-        validarEquipoId(equipoId);
-
-        return checkIns.get(clave(equipoId, LocalDate.now()));
-    }
-
-    private String clave(Long equipoId, LocalDate fecha) {
-        return equipoId + "|" + fecha;
-    }
-
-    private void validarEquipoId(Long equipoId) {
         if (equipoId == null) {
             throw new IllegalArgumentException("equipoId es obligatorio");
         }
+
+        String clave = equipoId + "|" + LocalDate.now();
+
+        return checkIns.get(clave);
     }
 }
