@@ -23,6 +23,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+// @WebMvcTest levanta solo el controller. MockMvc simula las peticiones HTTP
+// sin servidor real. @MockitoBean reemplaza el service por un mock: se prueba
+// el mapeo de rutas, códigos y JSON, no la lógica del service.
 @WebMvcTest(EquipoController.class)
 class EquipoControllerTest {
 

@@ -1,10 +1,8 @@
 package com.kala.backend.model;
 
-/**
- * Equipo de trabajo de una empresa. Almacenamiento en memoria (Avance 1).
- */
 public class Equipo {
 
+    // Se asigna al crear el equipo y no vuelve a cambiar.
     private final Long id;
     private String nombre;
     private Long empresaId;

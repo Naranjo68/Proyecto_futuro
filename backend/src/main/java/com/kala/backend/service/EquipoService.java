@@ -9,19 +9,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.stereotype.Service;
 
-/**
- * Lógica de negocio de equipos. Almacenamiento en memoria (Avance 1).
- *
- * No inyecta {@code EmpresaService}: la validación "la empresa debe existir
- * de verdad" se difiere a integración (#25). Aquí solo se valida que el
- * {@code empresaId} y el {@code nombre} vengan informados.
- */
 @Service
 public class EquipoService {
 
+    // Equipos guardados en memoria; AtomicLong genera el id de cada equipo nuevo.
     private final Map<Long, Equipo> equipos = new ConcurrentHashMap<>();
     private final AtomicLong secuencia = new AtomicLong(0);
 
+    // Sin empresaId devuelve todos; con empresaId filtra por esa empresa.
     public List<Equipo> listarPorEmpresa(Long empresaId) {
         if (empresaId == null) {
             return List.copyOf(equipos.values());
@@ -31,6 +26,7 @@ public class EquipoService {
                 .toList();
     }
 
+    // Único método que lanza el 404; lo reutilizan actualizar y eliminar.
     public Equipo buscarPorId(Long id) {
         Equipo equipo = equipos.get(id);
         if (equipo == null) {
@@ -56,10 +52,12 @@ public class EquipoService {
     }
 
     public void eliminar(Long id) {
-        buscarPorId(id);
+        buscarPorId(id);            // 404 si no existe
         equipos.remove(id);
     }
 
+    // Mismas reglas para crear y actualizar. Se valida aquí y no solo con @Valid
+    // porque el service también se llama directo desde los tests.
     private void validar(EquipoRequest request) {
         if (request.empresaId() == null) {
             throw new IllegalArgumentException("El equipo debe pertenecer a una empresa (empresaId es obligatorio).");

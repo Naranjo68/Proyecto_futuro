@@ -17,21 +17,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * API REST de equipos. Sin try/catch: los 404 llegan vía
- * {@link com.kala.backend.exception.EquipoNoEncontradoException} y los 400 de
- * validación vía {@code @Valid}.
- */
+// Recibe las peticiones HTTP y delega en el service. No lleva lógica ni try/catch:
+// el 400 lo produce @Valid y el 404 la excepción del service.
 @RestController
 @RequestMapping("/api/equipos")
 public class EquipoController {
 
+    // Inyección por constructor: permite declarar el campo final y pasar un mock
+    // en los tests.
     private final EquipoService service;
 
     public EquipoController(EquipoService service) {
         this.service = service;
     }
 
+    // required = false -> el filtro por empresa es opcional.
     @GetMapping
     public List<Equipo> listar(@RequestParam(required = false) Long empresaId) {
         return service.listarPorEmpresa(empresaId);
@@ -42,6 +42,7 @@ public class EquipoController {
         return service.buscarPorId(id);
     }
 
+    // 201 Created + header Location apuntando al equipo recién creado.
     @PostMapping
     public ResponseEntity<Equipo> crear(@Valid @RequestBody EquipoRequest request) {
         Equipo creado = service.crear(request);
@@ -53,6 +54,7 @@ public class EquipoController {
         return service.actualizar(id, request);
     }
 
+    // 204 No Content: se eliminó y no hay cuerpo que devolver.
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         service.eliminar(id);
