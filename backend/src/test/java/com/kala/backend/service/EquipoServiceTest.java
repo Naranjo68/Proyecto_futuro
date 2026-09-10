@@ -8,13 +8,9 @@ import com.kala.backend.exception.EquipoNoEncontradoException;
 import com.kala.backend.model.Equipo;
 import org.junit.jupiter.api.Test;
 
-/**
- * Fase RED (#15). Tests sin contexto de Spring: {@code new EquipoService()}.
- * Deben fallar / no compilar hasta que exista {@code EquipoService} (#16).
- *
- * En el Avance 1 el service NO inyecta {@code EmpresaService}: la validación
- * "la empresa debe existir de verdad" se difiere a integración (#25).
- */
+// Test unitario del service: JUnit 5 + AssertJ, sin levantar Spring.
+// El service no tiene dependencias, así que basta con new EquipoService().
+// Nombre de cada test: metodo_situacion_resultadoEsperado.
 class EquipoServiceTest {
 
     @Test

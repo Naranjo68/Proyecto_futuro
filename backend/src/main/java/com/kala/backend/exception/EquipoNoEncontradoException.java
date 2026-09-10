@@ -3,11 +3,8 @@ package com.kala.backend.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-/**
- * Se lanza cuando se busca un equipo por un id que no existe.
- * Anotada con {@code @ResponseStatus(NOT_FOUND)}: Spring responde 404
- * sin necesidad de que el GlobalExceptionHandler la conozca.
- */
+// Con @ResponseStatus, si esta excepción sale del controller sin capturar,
+// Spring responde 404 automáticamente.
 @ResponseStatus(HttpStatus.NOT_FOUND)
 public class EquipoNoEncontradoException extends RuntimeException {
 
