@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
-// Clase pura: test sin ningún contexto de Spring.
+// Test unitario de la clase pura: JUnit 5 + AssertJ, sin Spring.
 class EstimadorDesesgadoTest {
 
     private final EstimadorDesesgado estimador = new EstimadorDesesgado();

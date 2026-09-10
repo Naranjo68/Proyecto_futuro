@@ -2,8 +2,7 @@ package com.kala.backend.model;
 
 import java.time.LocalDate;
 
-// Agregado de check-ins de un equipo en una fecha. No guarda respuestas
-// individuales: solo los contadores.
+// Agregado diario de check-ins de un equipo: cuenta respuestas, no las guarda.
 public class CheckIn {
 
     private final Long id;
@@ -18,7 +17,7 @@ public class CheckIn {
         this.fecha = fecha;
     }
 
-    // Suma una respuesta al agregado: siempre al total, y al "sí" solo si aplica.
+    // Suma una respuesta: siempre al total, y al "sí" solo si respuestaSi es true.
     public void registrar(boolean respuestaSi) {
         totalRespuestas++;
         if (respuestaSi) {

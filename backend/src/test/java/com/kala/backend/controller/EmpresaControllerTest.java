@@ -21,6 +21,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+// @WebMvcTest carga solo el controller y el GlobalExceptionHandler. MockMvc simula
+// el HTTP; @MockitoBean sustituye el service por un mock. Se prueba el mapeo, no la lógica.
 @WebMvcTest(EmpresaController.class)
 class EmpresaControllerTest {
 

@@ -1,7 +1,6 @@
 package com.kala.backend.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -16,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+// @WebMvcTest carga solo el controller y el GlobalExceptionHandler. MockMvc simula
+// el HTTP; @MockitoBean sustituye el service por un mock. Se prueba el mapeo, no la lógica.
 @WebMvcTest(CheckInController.class)
 class CheckInControllerTest {
 
@@ -27,8 +28,6 @@ class CheckInControllerTest {
 
     @Test
     void registrarCheckInValido_devuelve202() throws Exception {
-        doNothing().when(service).registrar(any());
-
         mockMvc.perform(post("/api/checkin")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

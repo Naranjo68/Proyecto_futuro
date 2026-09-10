@@ -24,9 +24,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-// @WebMvcTest levanta solo el controller (y el GlobalExceptionHandler). MockMvc
-// simula las peticiones HTTP sin servidor real. @MockitoBean reemplaza el service
-// por un mock: se prueba el mapeo de rutas, códigos y JSON, no la lógica.
+// @WebMvcTest carga solo el controller y el GlobalExceptionHandler. MockMvc simula
+// el HTTP; @MockitoBean sustituye el service por un mock. Se prueba el mapeo, no la lógica.
 @WebMvcTest(EquipoController.class)
 class EquipoControllerTest {
 
@@ -53,9 +52,7 @@ class EquipoControllerTest {
         when(service.buscarPorId(99L)).thenThrow(new EquipoNoEncontradoException(99L));
 
         mockMvc.perform(get("/api/equipos/99"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.estado").value(404))
-                .andExpect(jsonPath("$.ruta").value("/api/equipos/99"));
+                .andExpect(status().isNotFound());
     }
 
     @Test

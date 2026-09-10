@@ -5,11 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 // Datos que llegan en el cuerpo de POST y PUT.
 public record EquipoRequest(
-
-        @NotBlank                 // no null y no solo espacios
-        String nombre,
-
-        @NotNull                  // obligatorio
-        Long empresaId
+        @NotBlank String nombre,
+        @NotNull Long empresaId
 ) {
 }

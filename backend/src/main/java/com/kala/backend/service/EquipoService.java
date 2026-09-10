@@ -66,10 +66,10 @@ public class EquipoService {
     // Comprobaciones comunes a crear y actualizar: campos presentes y empresa existente.
     private void validar(EquipoRequest request) {
         if (request.empresaId() == null) {
-            throw new IllegalArgumentException("El equipo debe pertenecer a una empresa (empresaId es obligatorio).");
+            throw new IllegalArgumentException("empresaId es obligatorio");
         }
         if (request.nombre() == null || request.nombre().isBlank()) {
-            throw new IllegalArgumentException("El nombre del equipo es obligatorio.");
+            throw new IllegalArgumentException("nombre es obligatorio");
         }
         empresaService.buscarPorId(request.empresaId());   // 404 si la empresa no existe
     }

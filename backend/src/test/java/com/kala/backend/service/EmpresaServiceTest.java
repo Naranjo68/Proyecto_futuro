@@ -9,7 +9,8 @@ import com.kala.backend.model.Empresa;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-// JUnit 5 + AssertJ, sin Spring. El service no tiene dependencias.
+// Test unitario del service: JUnit 5 + AssertJ, sin Spring.
+// EmpresaService no tiene dependencias.
 class EmpresaServiceTest {
 
     private EmpresaService service;

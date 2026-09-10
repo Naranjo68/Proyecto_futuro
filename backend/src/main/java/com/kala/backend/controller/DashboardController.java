@@ -1,35 +1,35 @@
 package com.kala.backend.controller;
 
 import com.kala.backend.dto.DashboardResponse;
+import com.kala.backend.exception.AgregadoNoEncontradoException;
 import com.kala.backend.model.CheckIn;
 import com.kala.backend.service.CheckInService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+// Traduce las peticiones HTTP a llamadas del service. Sin lógica de negocio ni try/catch.
 @RestController
 @RequestMapping("/api/dashboard")
 public class DashboardController {
 
-    private final CheckInService checkInService;
+    private final CheckInService service;
 
-    public DashboardController(CheckInService checkInService) {
-        this.checkInService = checkInService;
+    public DashboardController(CheckInService service) {
+        this.service = service;
     }
 
-    // 200 con el agregado del día; 404 si el equipo aún no tiene check-ins hoy
-    // (si el equipo no existe, el service lanza la excepción -> 404).
+    // 200 con el agregado de hoy; 404 si no hay check-ins hoy o el equipo no existe.
     @GetMapping("/{equipoId}")
-    public ResponseEntity<DashboardResponse> obtener(@PathVariable Long equipoId) {
-        CheckIn agregado = checkInService.buscarAgregadoDeHoy(equipoId);
+    public DashboardResponse obtener(@PathVariable Long equipoId) {
+        CheckIn agregado = service.buscarAgregadoDeHoy(equipoId);
         if (agregado == null) {
-            return ResponseEntity.notFound().build();
+            throw new AgregadoNoEncontradoException(equipoId);
         }
-        return ResponseEntity.ok(new DashboardResponse(
+        return new DashboardResponse(
                 agregado.getEquipoId(),
                 agregado.getRespuestasSi(),
-                agregado.getTotalRespuestas()));
+                agregado.getTotalRespuestas());
     }
 }

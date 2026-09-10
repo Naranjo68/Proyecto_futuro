@@ -2,7 +2,6 @@ package com.kala.backend.model;
 
 public class Equipo {
 
-    // Se asigna al crear el equipo y no vuelve a cambiar.
     private final Long id;
     private String nombre;
     private Long empresaId;

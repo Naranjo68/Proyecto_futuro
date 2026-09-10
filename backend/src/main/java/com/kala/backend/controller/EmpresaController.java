@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// Recibe las peticiones HTTP y delega en el service. Sin lógica ni try/catch.
+// Traduce las peticiones HTTP a llamadas del service. Sin lógica de negocio ni try/catch.
 @RestController
 @RequestMapping("/api/empresas")
 public class EmpresaController {
@@ -37,7 +37,7 @@ public class EmpresaController {
         return service.buscarPorId(id);
     }
 
-    // 201 Created + header Location apuntando a la empresa recién creada.
+    // 201 Created + header Location con la URL del recurso creado.
     @PostMapping
     public ResponseEntity<Empresa> crear(@Valid @RequestBody EmpresaRequest request) {
         Empresa creada = service.crear(request);

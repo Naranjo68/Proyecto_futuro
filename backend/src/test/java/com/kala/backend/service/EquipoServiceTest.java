@@ -11,9 +11,8 @@ import com.kala.backend.model.Equipo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-// JUnit 5 + AssertJ, sin Spring. EquipoService recibe un EmpresaService real,
-// construido a mano en setUp().
-// Nombre de cada test: metodo_situacion_resultadoEsperado.
+// Test unitario del service: JUnit 5 + AssertJ, sin Spring.
+// EquipoService recibe un EmpresaService real, construido a mano en setUp().
 class EquipoServiceTest {
 
     private EmpresaService empresaService;

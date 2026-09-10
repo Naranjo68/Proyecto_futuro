@@ -17,8 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// Recibe las peticiones HTTP y delega en el service. Sin lógica ni try/catch:
-// el 400 lo produce @Valid y el 404 la excepción del service.
+// Traduce las peticiones HTTP a llamadas del service. Sin lógica de negocio ni try/catch.
 @RestController
 @RequestMapping("/api/equipos")
 public class EquipoController {
@@ -40,7 +39,7 @@ public class EquipoController {
         return service.buscarPorId(id);
     }
 
-    // 201 Created + header Location apuntando al equipo recién creado.
+    // 201 Created + header Location con la URL del recurso creado.
     @PostMapping
     public ResponseEntity<Equipo> crear(@Valid @RequestBody EquipoRequest request) {
         Equipo creado = service.crear(request);

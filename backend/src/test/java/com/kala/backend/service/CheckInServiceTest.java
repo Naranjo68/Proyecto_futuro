@@ -11,8 +11,9 @@ import com.kala.backend.model.CheckIn;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-// JUnit 5 + AssertJ, sin Spring. CheckInService recibe un EquipoService real, que
-// a su vez recibe un EmpresaService real; se construyen a mano en setUp().
+// Test unitario del service: JUnit 5 + AssertJ, sin Spring.
+// CheckInService recibe un EquipoService real (y este un EmpresaService real),
+// construidos a mano en setUp().
 class CheckInServiceTest {
 
     private CheckInService service;
@@ -42,6 +43,12 @@ class CheckInServiceTest {
     void registrarSobreEquipoInexistente_lanzaEquipoNoEncontradoException() {
         assertThatThrownBy(() -> service.registrar(new CheckInRequest(999L, true)))
                 .isInstanceOf(EquipoNoEncontradoException.class);
+    }
+
+    @Test
+    void registrarConEquipoIdNulo_lanzaIllegalArgumentException() {
+        assertThatThrownBy(() -> service.registrar(new CheckInRequest(null, true)))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

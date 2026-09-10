@@ -54,7 +54,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void reglaDeNegocioViolada_devuelve400() throws Exception {
-        when(service.crear(any())).thenThrow(new IllegalArgumentException("El nombre del equipo es obligatorio."));
+        when(service.crear(any())).thenThrow(new IllegalArgumentException("nombre es obligatorio"));
 
         mockMvc.perform(post("/api/equipos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -62,6 +62,6 @@ class GlobalExceptionHandlerTest {
                                 { "nombre": "x", "empresaId": 1 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.mensaje").value("El nombre del equipo es obligatorio."));
+                .andExpect(jsonPath("$.mensaje").value("nombre es obligatorio"));
     }
 }

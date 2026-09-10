@@ -23,7 +23,7 @@ public class CheckInService {
     }
 
     public void registrar(CheckInRequest request) {
-        equipoService.buscarPorId(request.equipoId());   // 404 si el equipo no existe
+        validarEquipoExistente(request.equipoId());
         String clave = clave(request.equipoId(), LocalDate.now());
         CheckIn agregado = agregados.computeIfAbsent(
                 clave,
@@ -33,8 +33,15 @@ public class CheckInService {
 
     // Agregado de hoy del equipo, o null si todavía no hubo check-ins hoy.
     public CheckIn buscarAgregadoDeHoy(Long equipoId) {
-        equipoService.buscarPorId(equipoId);             // 404 si el equipo no existe
+        validarEquipoExistente(equipoId);
         return agregados.get(clave(equipoId, LocalDate.now()));
+    }
+
+    private void validarEquipoExistente(Long equipoId) {
+        if (equipoId == null) {
+            throw new IllegalArgumentException("equipoId es obligatorio");
+        }
+        equipoService.buscarPorId(equipoId);   // 404 si el equipo no existe
     }
 
     private String clave(Long equipoId, LocalDate fecha) {

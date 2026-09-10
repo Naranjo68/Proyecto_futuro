@@ -16,7 +16,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     // Recurso pedido que no existe.
-    @ExceptionHandler({EmpresaNoEncontradaException.class, EquipoNoEncontradoException.class})
+    @ExceptionHandler({
+            EmpresaNoEncontradaException.class,
+            EquipoNoEncontradoException.class,
+            AgregadoNoEncontradoException.class
+    })
     public ResponseEntity<ErrorResponse> noEncontrado(RuntimeException ex, HttpServletRequest request) {
         return construir(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }

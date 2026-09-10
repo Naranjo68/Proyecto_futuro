@@ -2,7 +2,6 @@ package com.kala.backend.model;
 
 public class Empresa {
 
-    // Se asigna al crear la empresa y no vuelve a cambiar.
     private final Long id;
     private String nombre;
     private String rubro;

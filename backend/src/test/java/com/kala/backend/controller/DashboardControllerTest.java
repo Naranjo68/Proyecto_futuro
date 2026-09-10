@@ -15,6 +15,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+// @WebMvcTest carga solo el controller y el GlobalExceptionHandler. MockMvc simula
+// el HTTP; @MockitoBean sustituye el service por un mock. Se prueba el mapeo, no la lógica.
 @WebMvcTest(DashboardController.class)
 class DashboardControllerTest {
 
@@ -22,14 +24,14 @@ class DashboardControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private CheckInService checkInService;
+    private CheckInService service;
 
     @Test
     void conAgregadoDelDia_devuelve200ConLosContadores() throws Exception {
         CheckIn agregado = new CheckIn(1L, 7L, LocalDate.now());
         agregado.registrar(true);
         agregado.registrar(false);
-        when(checkInService.buscarAgregadoDeHoy(7L)).thenReturn(agregado);
+        when(service.buscarAgregadoDeHoy(7L)).thenReturn(agregado);
 
         mockMvc.perform(get("/api/dashboard/7"))
                 .andExpect(status().isOk())
@@ -40,7 +42,7 @@ class DashboardControllerTest {
 
     @Test
     void sinCheckInsHoy_devuelve404() throws Exception {
-        when(checkInService.buscarAgregadoDeHoy(7L)).thenReturn(null);
+        when(service.buscarAgregadoDeHoy(7L)).thenReturn(null);
 
         mockMvc.perform(get("/api/dashboard/7"))
                 .andExpect(status().isNotFound());
@@ -48,7 +50,7 @@ class DashboardControllerTest {
 
     @Test
     void equipoInexistente_devuelve404() throws Exception {
-        when(checkInService.buscarAgregadoDeHoy(999L)).thenThrow(new EquipoNoEncontradoException(999L));
+        when(service.buscarAgregadoDeHoy(999L)).thenThrow(new EquipoNoEncontradoException(999L));
 
         mockMvc.perform(get("/api/dashboard/999"))
                 .andExpect(status().isNotFound());
