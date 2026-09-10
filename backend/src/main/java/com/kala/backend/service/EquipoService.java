@@ -23,8 +23,11 @@ public class EquipoService {
     private final AtomicLong secuencia = new AtomicLong(0);
 
     public List<Equipo> listarPorEmpresa(Long empresaId) {
+        if (empresaId == null) {
+            return List.copyOf(equipos.values());
+        }
         return equipos.values().stream()
-                .filter(equipo -> empresaId == null || empresaId.equals(equipo.getEmpresaId()))
+                .filter(equipo -> empresaId.equals(equipo.getEmpresaId()))
                 .toList();
     }
 
@@ -53,9 +56,8 @@ public class EquipoService {
     }
 
     public void eliminar(Long id) {
-        if (equipos.remove(id) == null) {
-            throw new EquipoNoEncontradoException(id);
-        }
+        buscarPorId(id);
+        equipos.remove(id);
     }
 
     private void validar(EquipoRequest request) {
