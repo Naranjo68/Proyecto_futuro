@@ -2,49 +2,49 @@ package com.kala.backend.service;
 
 import com.kala.backend.dto.CheckInRequest;
 import com.kala.backend.model.CheckIn;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.stereotype.Service;
 
 @Service
 public class CheckInService {
 
-    private final Map<String, CheckIn> checkIns = new ConcurrentHashMap<>();
-    private final AtomicLong idGenerator = new AtomicLong(1);
+    // Un agregado por equipo y por día. La clave combina ambos.
+    private final Map<String, CheckIn> agregados = new ConcurrentHashMap<>();
+    private final AtomicLong secuencia = new AtomicLong(0);
 
-    public void registrar(CheckInRequest request) {
+    // Se usa para comprobar que el equipo exista antes de registrar o consultar.
+    private final EquipoService equipoService;
 
-        if (request.equipoId() == null) {
-            throw new IllegalArgumentException("equipoId es obligatorio");
-        }
-
-        LocalDate fecha = LocalDate.now();
-
-        String clave = request.equipoId() + "|" + fecha;
-
-        CheckIn checkIn = checkIns.computeIfAbsent(
-                clave,
-                key -> new CheckIn(
-                        idGenerator.getAndIncrement(),
-                        request.equipoId(),
-                        fecha
-                )
-        );
-
-        checkIn.registrar(request.respuestaRuidosa());
+    public CheckInService(EquipoService equipoService) {
+        this.equipoService = equipoService;
     }
 
-    public CheckIn buscarAgregadoDeHoy(Long equipoId) {
+    public void registrar(CheckInRequest request) {
+        validarEquipoExistente(request.equipoId());
+        String clave = clave(request.equipoId(), LocalDate.now());
+        CheckIn agregado = agregados.computeIfAbsent(
+                clave,
+                k -> new CheckIn(secuencia.incrementAndGet(), request.equipoId(), LocalDate.now()));
+        agregado.registrar(request.respuestaRuidosa());
+    }
 
+    // Agregado de hoy del equipo, o null si todavía no hubo check-ins hoy.
+    public CheckIn buscarAgregadoDeHoy(Long equipoId) {
+        validarEquipoExistente(equipoId);
+        return agregados.get(clave(equipoId, LocalDate.now()));
+    }
+
+    private void validarEquipoExistente(Long equipoId) {
         if (equipoId == null) {
             throw new IllegalArgumentException("equipoId es obligatorio");
         }
+        equipoService.buscarPorId(equipoId);   // 404 si el equipo no existe
+    }
 
-        String clave = equipoId + "|" + LocalDate.now();
-
-        return checkIns.get(clave);
+    private String clave(Long equipoId, LocalDate fecha) {
+        return equipoId + "|" + fecha;
     }
 }

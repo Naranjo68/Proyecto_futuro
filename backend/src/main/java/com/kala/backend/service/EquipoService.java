@@ -12,9 +12,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class EquipoService {
 
-    // Equipos guardados en memoria; AtomicLong genera el id de cada equipo nuevo.
+    // Índice de equipos por id. AtomicLong genera ids incrementales.
     private final Map<Long, Equipo> equipos = new ConcurrentHashMap<>();
     private final AtomicLong secuencia = new AtomicLong(0);
+
+    // Se usa para comprobar que la empresa exista antes de crear/actualizar.
+    private final EmpresaService empresaService;
+
+    public EquipoService(EmpresaService empresaService) {
+        this.empresaService = empresaService;
+    }
 
     // Sin empresaId devuelve todos; con empresaId filtra por esa empresa.
     public List<Equipo> listarPorEmpresa(Long empresaId) {
@@ -56,14 +63,14 @@ public class EquipoService {
         equipos.remove(id);
     }
 
-    // Mismas reglas para crear y actualizar. Se valida aquí y no solo con @Valid
-    // porque el service también se llama directo desde los tests.
+    // Comprobaciones comunes a crear y actualizar: campos presentes y empresa existente.
     private void validar(EquipoRequest request) {
         if (request.empresaId() == null) {
-            throw new IllegalArgumentException("El equipo debe pertenecer a una empresa (empresaId es obligatorio).");
+            throw new IllegalArgumentException("empresaId es obligatorio");
         }
         if (request.nombre() == null || request.nombre().isBlank()) {
-            throw new IllegalArgumentException("El nombre del equipo es obligatorio.");
+            throw new IllegalArgumentException("nombre es obligatorio");
         }
+        empresaService.buscarPorId(request.empresaId());   // 404 si la empresa no existe
     }
 }

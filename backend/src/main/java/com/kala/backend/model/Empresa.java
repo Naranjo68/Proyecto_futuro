@@ -1,15 +1,15 @@
 package com.kala.backend.model;
 
-public class Equipo {
+public class Empresa {
 
     private final Long id;
     private String nombre;
-    private Long empresaId;
+    private String rubro;
 
-    public Equipo(Long id, String nombre, Long empresaId) {
+    public Empresa(Long id, String nombre, String rubro) {
         this.id = id;
         this.nombre = nombre;
-        this.empresaId = empresaId;
+        this.rubro = rubro;
     }
 
     public Long getId() {
@@ -24,11 +24,11 @@ public class Equipo {
         this.nombre = nombre;
     }
 
-    public Long getEmpresaId() {
-        return empresaId;
+    public String getRubro() {
+        return rubro;
     }
 
-    public void setEmpresaId(Long empresaId) {
-        this.empresaId = empresaId;
+    public void setRubro(String rubro) {
+        this.rubro = rubro;
     }
 }

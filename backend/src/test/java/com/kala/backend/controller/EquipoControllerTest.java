@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.kala.backend.exception.EmpresaNoEncontradaException;
 import com.kala.backend.exception.EquipoNoEncontradoException;
 import com.kala.backend.model.Equipo;
 import com.kala.backend.service.EquipoService;
@@ -23,9 +24,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-// @WebMvcTest levanta solo el controller. MockMvc simula las peticiones HTTP
-// sin servidor real. @MockitoBean reemplaza el service por un mock: se prueba
-// el mapeo de rutas, códigos y JSON, no la lógica del service.
+// @WebMvcTest carga solo el controller y el GlobalExceptionHandler. MockMvc simula
+// el HTTP; @MockitoBean sustituye el service por un mock. Se prueba el mapeo, no la lógica.
 @WebMvcTest(EquipoController.class)
 class EquipoControllerTest {
 
@@ -77,6 +77,18 @@ class EquipoControllerTest {
                                 { "nombre": "", "empresaId": 2 }
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void crearEquipoConEmpresaInexistente_devuelve404() throws Exception {
+        when(service.crear(any())).thenThrow(new EmpresaNoEncontradaException(999L));
+
+        mockMvc.perform(post("/api/equipos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "nombre": "Equipo", "empresaId": 999 }
+                                """))
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -3,43 +3,58 @@ package com.kala.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.kala.backend.dto.EmpresaRequest;
 import com.kala.backend.dto.EquipoRequest;
+import com.kala.backend.exception.EmpresaNoEncontradaException;
 import com.kala.backend.exception.EquipoNoEncontradoException;
 import com.kala.backend.model.Equipo;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-// Test unitario del service: JUnit 5 + AssertJ, sin levantar Spring.
-// El service no tiene dependencias, así que basta con new EquipoService().
-// Nombre de cada test: metodo_situacion_resultadoEsperado.
+// Test unitario del service: JUnit 5 + AssertJ, sin Spring.
+// EquipoService recibe un EmpresaService real, construido a mano en setUp().
 class EquipoServiceTest {
+
+    private EmpresaService empresaService;
+    private EquipoService service;
+    private Long empresaId;
+
+    @BeforeEach
+    void setUp() {
+        empresaService = new EmpresaService();
+        service = new EquipoService(empresaService);
+        empresaId = empresaService.crear(new EmpresaRequest("ACME", "Tecnología")).getId();
+    }
 
     @Test
     void crearEquipoValido_asignaIdYConservaEmpresaId() {
-        EquipoService service = new EquipoService();
-
-        Equipo creado = service.crear(new EquipoRequest("Equipo Ventas", 1L));
+        Equipo creado = service.crear(new EquipoRequest("Equipo Ventas", empresaId));
 
         assertThat(creado.getId()).isNotNull();
         assertThat(creado.getNombre()).isEqualTo("Equipo Ventas");
-        assertThat(creado.getEmpresaId()).isEqualTo(1L);
+        assertThat(creado.getEmpresaId()).isEqualTo(empresaId);
+    }
+
+    @Test
+    void crearEquipoConEmpresaInexistente_lanzaEmpresaNoEncontradaException() {
+        assertThatThrownBy(() -> service.crear(new EquipoRequest("Equipo huérfano", 999L)))
+                .isInstanceOf(EmpresaNoEncontradaException.class);
     }
 
     @Test
     void crearEquipoConEmpresaIdNulo_lanzaIllegalArgumentException() {
-        EquipoService service = new EquipoService();
-
-        assertThatThrownBy(() -> service.crear(new EquipoRequest("Equipo sin empresa", null)))
+        assertThatThrownBy(() -> service.crear(new EquipoRequest("Sin empresa", null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void listarPorEmpresa_filtraPorEmpresaIdODevuelveTodos() {
-        EquipoService service = new EquipoService();
-        service.crear(new EquipoRequest("Equipo A", 1L));
-        service.crear(new EquipoRequest("Equipo B", 1L));
-        service.crear(new EquipoRequest("Equipo C", 2L));
+        Long otraEmpresa = empresaService.crear(new EmpresaRequest("Globex", "Retail")).getId();
+        service.crear(new EquipoRequest("Equipo A", empresaId));
+        service.crear(new EquipoRequest("Equipo B", empresaId));
+        service.crear(new EquipoRequest("Equipo C", otraEmpresa));
 
-        assertThat(service.listarPorEmpresa(1L))
+        assertThat(service.listarPorEmpresa(empresaId))
                 .extracting(Equipo::getNombre)
                 .containsExactlyInAnyOrder("Equipo A", "Equipo B");
 
@@ -48,8 +63,6 @@ class EquipoServiceTest {
 
     @Test
     void buscarPorIdInexistente_lanzaEquipoNoEncontradoException() {
-        EquipoService service = new EquipoService();
-
         assertThatThrownBy(() -> service.buscarPorId(999L))
                 .isInstanceOf(EquipoNoEncontradoException.class)
                 .hasMessageContaining("999");

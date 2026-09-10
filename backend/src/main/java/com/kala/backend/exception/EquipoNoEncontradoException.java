@@ -1,11 +1,6 @@
 package com.kala.backend.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
-
-// Con @ResponseStatus, si esta excepción sale del controller sin capturar,
-// Spring responde 404 automáticamente.
-@ResponseStatus(HttpStatus.NOT_FOUND)
+// La traduce a HTTP 404 el GlobalExceptionHandler.
 public class EquipoNoEncontradoException extends RuntimeException {
 
     public EquipoNoEncontradoException(Long id) {
