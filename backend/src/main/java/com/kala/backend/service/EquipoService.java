@@ -9,19 +9,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.stereotype.Service;
 
-/**
- * Lógica de negocio de equipos. Almacenamiento en memoria (Avance 1).
- *
- * No inyecta {@code EmpresaService}: la validación "la empresa debe existir
- * de verdad" se difiere a integración (#25). Aquí solo se valida que el
- * {@code empresaId} y el {@code nombre} vengan informados.
- */
 @Service
 public class EquipoService {
 
+    // Índice de equipos por id. AtomicLong genera ids incrementales.
     private final Map<Long, Equipo> equipos = new ConcurrentHashMap<>();
     private final AtomicLong secuencia = new AtomicLong(0);
 
+    // Se usa para comprobar que la empresa exista antes de crear/actualizar.
+    private final EmpresaService empresaService;
+
+    public EquipoService(EmpresaService empresaService) {
+        this.empresaService = empresaService;
+    }
+
+    // Sin empresaId devuelve todos; con empresaId filtra por esa empresa.
     public List<Equipo> listarPorEmpresa(Long empresaId) {
         if (empresaId == null) {
             return List.copyOf(equipos.values());
@@ -31,6 +33,7 @@ public class EquipoService {
                 .toList();
     }
 
+    // Único método que lanza el 404; lo reutilizan actualizar y eliminar.
     public Equipo buscarPorId(Long id) {
         Equipo equipo = equipos.get(id);
         if (equipo == null) {
@@ -56,10 +59,11 @@ public class EquipoService {
     }
 
     public void eliminar(Long id) {
-        buscarPorId(id);
+        buscarPorId(id);            // 404 si no existe
         equipos.remove(id);
     }
 
+    // Comprobaciones comunes a crear y actualizar: campos presentes y empresa existente.
     private void validar(EquipoRequest request) {
         if (request.empresaId() == null) {
             throw new IllegalArgumentException("El equipo debe pertenecer a una empresa (empresaId es obligatorio).");
@@ -67,5 +71,6 @@ public class EquipoService {
         if (request.nombre() == null || request.nombre().isBlank()) {
             throw new IllegalArgumentException("El nombre del equipo es obligatorio.");
         }
+        empresaService.buscarPorId(request.empresaId());   // 404 si la empresa no existe
     }
 }

@@ -1,25 +1,43 @@
 {
   "info": {
     "name": "Kala - Equipo",
-    "description": "Avance 1 - API REST de equipos (/api/equipos). Ejecutar contra el servidor real: mvn spring-boot:run (localhost:8080). El orden importa: 'Crear equipo valido' guarda {{equipoId}} para 'Actualizar' y 'Eliminar'.",
+    "description": "Avance 1 - API REST de equipos (/api/equipos). Ejecutar contra el servidor real (mvn spring-boot:run, localhost:8080) con Run collection. El flujo crea su propia empresa para no depender de datos previos.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8080" },
-    { "key": "empresaId", "value": "1" },
+    { "key": "empresaId", "value": "" },
     { "key": "equipoId", "value": "" }
   ],
   "item": [
+    {
+      "name": "Setup - crear empresa",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/empresas", "host": ["{{baseUrl}}"], "path": ["api", "empresas"] },
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"ACME\",\n  \"rubro\": \"Tecnologia\"\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('empresaId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
     {
       "name": "Crear equipo valido (201 + Location)",
       "request": {
         "method": "POST",
         "header": [ { "key": "Content-Type", "value": "application/json" } ],
         "url": { "raw": "{{baseUrl}}/api/equipos", "host": ["{{baseUrl}}"], "path": ["api", "equipos"] },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"nombre\": \"Equipo Ventas\",\n  \"empresaId\": {{empresaId}}\n}"
-        }
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Equipo Ventas\",\n  \"empresaId\": {{empresaId}}\n}" }
       },
       "event": [
         {
@@ -33,9 +51,7 @@
               "  pm.expect(body.id).to.be.a('number');",
               "  pm.expect(body.empresaId).to.eql(Number(pm.collectionVariables.get('empresaId')));",
               "});",
-              "pm.test('header Location', () => {",
-              "  pm.expect(pm.response.headers.get('Location')).to.eql('/api/equipos/' + body.id);",
-              "});",
+              "pm.test('header Location', () => pm.expect(pm.response.headers.get('Location')).to.eql('/api/equipos/' + body.id));",
               "pm.collectionVariables.set('equipoId', body.id);"
             ]
           }
@@ -96,10 +112,25 @@
         "method": "POST",
         "header": [ { "key": "Content-Type", "value": "application/json" } ],
         "url": { "raw": "{{baseUrl}}/api/equipos", "host": ["{{baseUrl}}"], "path": ["api", "equipos"] },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"nombre\": \"\",\n  \"empresaId\": {{empresaId}}\n}"
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"\",\n  \"empresaId\": {{empresaId}}\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [ "pm.test('status 400', () => pm.response.to.have.status(400));" ]
+          }
         }
+      ]
+    },
+    {
+      "name": "Crear equipo con empresa inexistente (404)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/equipos", "host": ["{{baseUrl}}"], "path": ["api", "equipos"] },
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Equipo huerfano\",\n  \"empresaId\": 999999\n}" }
       },
       "event": [
         {
@@ -107,7 +138,8 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status 400', () => pm.response.to.have.status(400));"
+              "pm.test('status 404', () => pm.response.to.have.status(404));",
+              "pm.test('mensaje de empresa inexistente', () => pm.expect(pm.response.json().mensaje).to.include('empresa'));"
             ]
           }
         }
@@ -125,9 +157,7 @@
           "listen": "test",
           "script": {
             "type": "text/javascript",
-            "exec": [
-              "pm.test('status 404', () => pm.response.to.have.status(404));"
-            ]
+            "exec": [ "pm.test('status 404', () => pm.response.to.have.status(404));" ]
           }
         }
       ]
@@ -138,10 +168,7 @@
         "method": "PUT",
         "header": [ { "key": "Content-Type", "value": "application/json" } ],
         "url": { "raw": "{{baseUrl}}/api/equipos/{{equipoId}}", "host": ["{{baseUrl}}"], "path": ["api", "equipos", "{{equipoId}}"] },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"nombre\": \"Equipo Ventas LATAM\",\n  \"empresaId\": {{empresaId}}\n}"
-        }
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Equipo Ventas LATAM\",\n  \"empresaId\": {{empresaId}}\n}" }
       },
       "event": [
         {
@@ -168,9 +195,7 @@
           "listen": "test",
           "script": {
             "type": "text/javascript",
-            "exec": [
-              "pm.test('status 204', () => pm.response.to.have.status(204));"
-            ]
+            "exec": [ "pm.test('status 204', () => pm.response.to.have.status(204));" ]
           }
         }
       ]
