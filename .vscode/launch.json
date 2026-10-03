@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-Semana6Application<com.utp-semana6>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.utp.semana6.Semana6Application",
+            "projectName": "com.utp-semana6",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
