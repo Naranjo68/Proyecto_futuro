@@ -3,6 +3,7 @@ package com.kala.backend.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -18,12 +19,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @WebMvcTest(EmpresaController.class)
+@Import(OrganizacionTestSecurityConfig.class)
+@TestPropertySource(properties = {
+        "app.jwt.issuer=kala-api",
+        "app.jwt.ttl-minutes=30",
+        "app.jwt.secret-base64=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+})
 class EmpresaControllerTest {
 
     @Autowired
@@ -45,7 +56,7 @@ class EmpresaControllerTest {
                 crearEmpresaPrueba(1L, "ACME", "Tecnologia", "20123456789")
         ));
 
-        mockMvc.perform(get("/api/empresas"))
+        mockMvc.perform(get("/api/empresas").with(admin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].nombre").value("ACME"))
                 .andExpect(jsonPath("$[0].ruc").value("20123456789"));
@@ -56,7 +67,7 @@ class EmpresaControllerTest {
         when(service.buscarPorId(99L))
                 .thenThrow(new EmpresaNoEncontradaException(99L));
 
-        mockMvc.perform(get("/api/empresas/99"))
+        mockMvc.perform(get("/api/empresas/99").with(admin()))
                 .andExpect(status().isNotFound());
     }
 
@@ -66,7 +77,7 @@ class EmpresaControllerTest {
                 crearEmpresaPrueba(5L, "ACME", "Tecnologia", "20123456789")
         );
 
-        mockMvc.perform(post("/api/empresas")
+        mockMvc.perform(post("/api/empresas").with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -84,7 +95,7 @@ class EmpresaControllerTest {
 
     @Test
     void crearEmpresaConNombreVacio_devuelve400() throws Exception {
-        mockMvc.perform(post("/api/empresas")
+        mockMvc.perform(post("/api/empresas").with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -98,9 +109,14 @@ class EmpresaControllerTest {
 
     @Test
     void eliminarEmpresa_devuelve204() throws Exception {
-        mockMvc.perform(delete("/api/empresas/3"))
+        mockMvc.perform(delete("/api/empresas/3").with(admin()))
                 .andExpect(status().isNoContent());
 
         verify(service).eliminar(3L);
+    }
+
+    private static RequestPostProcessor admin() {
+        return jwt().jwt(jwt -> jwt.claim("roles", List.of("ROLE_ADMIN")))
+                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"));
     }
 }

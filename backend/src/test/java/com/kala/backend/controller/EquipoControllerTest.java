@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -19,16 +20,24 @@ import com.kala.backend.service.EquipoService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 // @WebMvcTest carga solo el controller y el GlobalExceptionHandler. MockMvc simula
 // el HTTP; @MockitoBean sustituye el service por un mock. Se prueba el mapeo, no la lógica.
-@AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(EquipoController.class)
+@Import(OrganizacionTestSecurityConfig.class)
+@TestPropertySource(properties = {
+        "app.jwt.issuer=kala-api",
+        "app.jwt.ttl-minutes=30",
+        "app.jwt.secret-base64=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+})
 class EquipoControllerTest {
 
     @Autowired
@@ -41,7 +50,7 @@ class EquipoControllerTest {
     void listarConFiltroPorEmpresa_devuelve200() throws Exception {
         when(service.listarPorEmpresa(1L)).thenReturn(List.of(new Equipo(1L, "Ventas", 1L)));
 
-        mockMvc.perform(get("/api/equipos").param("empresaId", "1"))
+        mockMvc.perform(get("/api/equipos").param("empresaId", "1").with(admin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].nombre").value("Ventas"))
                 .andExpect(jsonPath("$[0].empresaId").value(1));
@@ -53,7 +62,7 @@ class EquipoControllerTest {
     void buscarPorIdInexistente_devuelve404() throws Exception {
         when(service.buscarPorId(99L)).thenThrow(new EquipoNoEncontradoException(99L));
 
-        mockMvc.perform(get("/api/equipos/99"))
+        mockMvc.perform(get("/api/equipos/99").with(admin()))
                 .andExpect(status().isNotFound());
     }
 
@@ -61,7 +70,7 @@ class EquipoControllerTest {
     void crearEquipoValido_devuelve201ConLocation() throws Exception {
         when(service.crear(any())).thenReturn(new Equipo(7L, "Marketing", 2L));
 
-        mockMvc.perform(post("/api/equipos")
+        mockMvc.perform(post("/api/equipos").with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "nombre": "Marketing", "empresaId": 2 }
@@ -75,7 +84,7 @@ class EquipoControllerTest {
 
     @Test
     void crearEquipoConNombreVacio_devuelve400() throws Exception {
-        mockMvc.perform(post("/api/equipos")
+        mockMvc.perform(post("/api/equipos").with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "nombre": "", "empresaId": 2 }
@@ -87,7 +96,7 @@ class EquipoControllerTest {
     void crearEquipoConEmpresaInexistente_devuelve404() throws Exception {
         when(service.crear(any())).thenThrow(new EmpresaNoEncontradaException(999L));
 
-        mockMvc.perform(post("/api/equipos")
+        mockMvc.perform(post("/api/equipos").with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "nombre": "Equipo", "empresaId": 999 }
@@ -97,7 +106,7 @@ class EquipoControllerTest {
 
     @Test
     void eliminarEquipo_devuelve204() throws Exception {
-        mockMvc.perform(delete("/api/equipos/3"))
+        mockMvc.perform(delete("/api/equipos/3").with(admin()))
                 .andExpect(status().isNoContent());
 
         verify(service).eliminar(3L);
@@ -109,8 +118,13 @@ class EquipoControllerTest {
         doThrow(new EquipoNoEncontradoException(3L))
                 .when(service).eliminar(eq(3L));
 
-        mockMvc.perform(delete("/api/equipos/3"))
+        mockMvc.perform(delete("/api/equipos/3").with(admin()))
                 .andExpect(status().isNotFound());
+    }
+
+    private static RequestPostProcessor admin() {
+        return jwt().jwt(jwt -> jwt.claim("roles", List.of("ROLE_ADMIN")))
+                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"));
     }
 
 }

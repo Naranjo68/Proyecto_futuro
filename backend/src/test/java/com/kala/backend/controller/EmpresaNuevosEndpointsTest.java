@@ -3,6 +3,7 @@ package com.kala.backend.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -16,14 +17,22 @@ import com.kala.backend.service.EmpresaService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @WebMvcTest(EmpresaController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@Import(OrganizacionTestSecurityConfig.class)
+@TestPropertySource(properties = {
+        "app.jwt.issuer=kala-api",
+        "app.jwt.ttl-minutes=30",
+        "app.jwt.secret-base64=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+})
 class EmpresaNuevosEndpointsTest {
 
     @Autowired
@@ -35,7 +44,8 @@ class EmpresaNuevosEndpointsTest {
     @Test
     void buscarConTextoVacioDevuelve400() throws Exception {
         mockMvc.perform(get("/api/empresas/buscar")
-                        .param("texto", ""))
+                        .param("texto", "")
+                        .with(admin()))
                 .andExpect(status().isBadRequest());
     }
 
@@ -47,7 +57,8 @@ class EmpresaNuevosEndpointsTest {
                 .thenReturn(List.of(empresa));
 
         mockMvc.perform(get("/api/empresas/buscar")
-                        .param("texto", "acme"))
+                        .param("texto", "acme")
+                        .with(admin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[0].nombre").value("Acme"));
@@ -70,7 +81,7 @@ class EmpresaNuevosEndpointsTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/empresas/con-equipos")
+        mockMvc.perform(post("/api/empresas/con-equipos").with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isCreated())
@@ -95,9 +106,14 @@ class EmpresaNuevosEndpointsTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/empresas/con-equipos")
+        mockMvc.perform(post("/api/empresas/con-equipos").with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isConflict());
+    }
+
+    private static RequestPostProcessor admin() {
+        return jwt().jwt(jwt -> jwt.claim("roles", List.of("ROLE_ADMIN")))
+                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"));
     }
 }
