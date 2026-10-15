@@ -50,6 +50,15 @@ public class EmpresaService {
         return empresaRepository.buscarPorNombre(texto.trim());
     }
 
+    @Transactional(readOnly = true)
+    public List<Empresa> buscarPorNombre(String texto, Long empresaId) {
+        if (texto == null || texto.isBlank()) {
+            throw new IllegalArgumentException(
+                    "El texto de búsqueda no puede estar vacío");
+        }
+        return empresaRepository.buscarPorNombreEnEmpresa(empresaId, texto.trim());
+    }
+
     @Transactional
     public Empresa crear(EmpresaRequest request) {
         Empresa empresa = new Empresa(

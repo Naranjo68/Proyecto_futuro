@@ -62,7 +62,10 @@ class SeguridadReglasTest {
     void unRecursoProtegido_conUnTokenValido_devuelve200() throws Exception {
         when(empresaService.listar()).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/empresas").with(jwt()))
+        mockMvc.perform(get("/api/empresas")
+                        .with(jwt()
+                                .jwt(token -> token.claim("roles", List.of("ROLE_ADMIN")))
+                                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk());
     }
 

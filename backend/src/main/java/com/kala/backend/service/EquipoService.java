@@ -37,6 +37,12 @@ public class EquipoService {
                 .orElseThrow(() -> new EquipoNoEncontradoException(id));
     }
 
+    @Transactional(readOnly = true)
+    public Equipo buscarPorIdEnEmpresa(Long id, Long empresaId) {
+        return equipoRepository.findByIdAndEmpresaId(id, empresaId)
+                .orElseThrow(() -> new EquipoNoEncontradoException(id));
+    }
+
     @Transactional
     public Equipo crear(EquipoRequest request) {
         validar(request);
@@ -61,8 +67,26 @@ public class EquipoService {
     }
 
     @Transactional
+    public Equipo actualizarEnEmpresa(Long id, EquipoRequest request, Long empresaId) {
+        if (!empresaId.equals(request.empresaId())) {
+            throw new EquipoNoEncontradoException(id);
+        }
+
+        validar(request);
+        Equipo equipo = buscarPorIdEnEmpresa(id, empresaId);
+        equipo.setNombre(request.nombre());
+        return equipoRepository.save(equipo);
+    }
+
+    @Transactional
     public void eliminar(Long id) {
         Equipo equipo = buscarPorId(id);
+        equipoRepository.delete(equipo);
+    }
+
+    @Transactional
+    public void eliminarEnEmpresa(Long id, Long empresaId) {
+        Equipo equipo = buscarPorIdEnEmpresa(id, empresaId);
         equipoRepository.delete(equipo);
     }
 

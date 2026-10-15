@@ -2,6 +2,7 @@ package com.kala.backend.controller;
 
 import com.kala.backend.dto.EmpresaConEquiposRequest;
 import com.kala.backend.dto.EmpresaRequest;
+import com.kala.backend.exception.EmpresaNoEncontradaException;
 import com.kala.backend.model.Empresa;
 import com.kala.backend.service.EmpresaService;
 import jakarta.validation.Valid;
@@ -9,6 +10,9 @@ import java.net.URI;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,12 +35,18 @@ public class EmpresaController {
     }
 
     @GetMapping
-    public List<Empresa> listar() {
-        return service.listar();
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH', 'COORDINADOR_BIENESTAR')")
+    public List<Empresa> listar(@AuthenticationPrincipal Jwt jwt) {
+        if (esAdmin(jwt)) {
+            return service.listar();
+        }
+        return List.of(service.buscarPorId(empresaId(jwt)));
     }
 
     @GetMapping("/buscar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH', 'COORDINADOR_BIENESTAR')")
     public List<Empresa> buscarPorNombre(
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam("texto") String texto) {
 
         if (texto == null || texto.isBlank()) {
@@ -46,15 +56,23 @@ public class EmpresaController {
             );
         }
 
-        return service.buscarPorNombre(texto);
+        if (esAdmin(jwt)) {
+            return service.buscarPorNombre(texto);
+        }
+        return service.buscarPorNombre(texto, empresaId(jwt));
     }
 
     @GetMapping("/{id}")
-    public Empresa buscarPorId(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH', 'COORDINADOR_BIENESTAR')")
+    public Empresa buscarPorId(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        if (!esAdmin(jwt) && !id.equals(empresaId(jwt))) {
+            throw new EmpresaNoEncontradaException(id);
+        }
         return service.buscarPorId(id);
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Empresa> crear(
             @Valid @RequestBody EmpresaRequest request) {
 
@@ -66,6 +84,7 @@ public class EmpresaController {
     }
 
     @PostMapping("/con-equipos")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Empresa> crearConEquipos(
             @Valid @RequestBody EmpresaConEquiposRequest request) {
 
@@ -77,6 +96,7 @@ public class EmpresaController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public Empresa actualizar(
             @PathVariable Long id,
             @Valid @RequestBody EmpresaRequest request) {
@@ -85,8 +105,17 @@ public class EmpresaController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         service.eliminar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private static boolean esAdmin(Jwt jwt) {
+        return jwt.getClaimAsStringList("roles").contains("ROLE_ADMIN");
+    }
+
+    private static Long empresaId(Jwt jwt) {
+        return jwt.getClaim("empresaId");
     }
 }
