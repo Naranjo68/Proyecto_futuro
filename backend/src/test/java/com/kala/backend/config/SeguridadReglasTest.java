@@ -3,6 +3,7 @@ package com.kala.backend.config;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -16,39 +17,29 @@ import com.kala.backend.service.EmpresaService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-// Matriz 401 / 403 / 200 de las reglas generales de SecurityConfig, con los filtros de seguridad activos.
+// Reglas generales de SecurityConfig con los filtros activos. El token se simula con jwt() o con un
+// decodificador simulado; la validación real de firma, vencimiento y emisor está en JwtMatrizTest.
 @WebMvcTest({PublicoController.class, EmpresaController.class, CheckInController.class})
 @Import(SecurityConfig.class)
 class SeguridadReglasTest {
 
-    // UserDetailsService en memoria para probar HTTP Basic de punta a punta sin base de datos.
-    @TestConfiguration
-    static class UsuarioDePrueba {
-        @Bean
-        UserDetailsService userDetailsService(PasswordEncoder encoder) {
-            return new InMemoryUserDetailsManager(User.withUsername("ana@kala.test")
-                    .password(encoder.encode("clave-segura-123"))
-                    .authorities("ROLE_RRHH")
-                    .build());
-        }
-    }
-
     @Autowired
     private MockMvc mockMvc;
 
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+    @MockitoBean
+    private UserDetailsService usuarios;
     @MockitoBean
     private EmpresaService empresaService;
     @MockitoBean
@@ -62,43 +53,37 @@ class SeguridadReglasTest {
     }
 
     @Test
-    void unRecursoProtegido_sinCredenciales_devuelve401() throws Exception {
+    void unRecursoProtegido_sinToken_devuelve401() throws Exception {
         mockMvc.perform(get("/api/empresas"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void unRecursoProtegido_conCredencialesValidas_devuelve200() throws Exception {
+    void unRecursoProtegido_conUnTokenValido_devuelve200() throws Exception {
         when(empresaService.listar()).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/empresas").with(httpBasic("ana@kala.test", "clave-segura-123")))
+        mockMvc.perform(get("/api/empresas").with(jwt()))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void conContrasenaIncorrecta_devuelve401() throws Exception {
-        mockMvc.perform(get("/api/empresas").with(httpBasic("ana@kala.test", "otra-clave")))
+    void conUnTokenInvalido_devuelve401() throws Exception {
+        when(jwtDecoder.decode("token-invalido")).thenThrow(new BadJwtException("firma inválida"));
+
+        mockMvc.perform(get("/api/empresas").header("Authorization", "Bearer token-invalido"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void conUnUsuarioInexistente_devuelve401() throws Exception {
-        mockMvc.perform(get("/api/empresas").with(httpBasic("nadie@kala.test", "clave-segura-123")))
+    void httpBasicYaNoSeAcepta_devuelve401() throws Exception {
+        mockMvc.perform(get("/api/empresas").with(httpBasic("ana@kala.test", "clave-segura-123")))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @WithMockUser(roles = "EMPLEADO")
-    void cualquierUsuarioAutenticado_accedeALasReglasGenerales() throws Exception {
-        when(empresaService.listar()).thenReturn(List.of());
-
-        mockMvc.perform(get("/api/empresas")).andExpect(status().isOk());
-    }
-
-    @Test
-    @WithMockUser(roles = "RRHH")
     void unRolSinPermiso_enUnEndpointDeEmpleado_devuelve403() throws Exception {
         mockMvc.perform(post("/api/checkin")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_RRHH")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"itemId\": 9, \"configuracionLdpId\": 2, \"respuestaRuidosa\": true }"))
                 .andExpect(status().isForbidden());
