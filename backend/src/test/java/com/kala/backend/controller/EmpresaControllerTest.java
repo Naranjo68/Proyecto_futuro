@@ -22,8 +22,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-// @WebMvcTest carga solo el controller y el GlobalExceptionHandler. MockMvc simula
-// el HTTP; @MockitoBean sustituye el service por un mock. Se prueba el mapeo, no la lógica.
 @AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(EmpresaController.class)
 class EmpresaControllerTest {
@@ -34,18 +32,29 @@ class EmpresaControllerTest {
     @MockitoBean
     private EmpresaService service;
 
+    private Empresa crearEmpresaPrueba(
+            Long id, String nombre, String rubro, String ruc) {
+        Empresa empresa = new Empresa(id, nombre, rubro);
+        empresa.setRuc(ruc);
+        return empresa;
+    }
+
     @Test
     void listar_devuelve200ConArreglo() throws Exception {
-        when(service.listar()).thenReturn(List.of(new Empresa(1L, "ACME", "Tecnología")));
+        when(service.listar()).thenReturn(List.of(
+                crearEmpresaPrueba(1L, "ACME", "Tecnologia", "20123456789")
+        ));
 
         mockMvc.perform(get("/api/empresas"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].nombre").value("ACME"));
+                .andExpect(jsonPath("$[0].nombre").value("ACME"))
+                .andExpect(jsonPath("$[0].ruc").value("20123456789"));
     }
 
     @Test
     void buscarPorIdInexistente_devuelve404() throws Exception {
-        when(service.buscarPorId(99L)).thenThrow(new EmpresaNoEncontradaException(99L));
+        when(service.buscarPorId(99L))
+                .thenThrow(new EmpresaNoEncontradaException(99L));
 
         mockMvc.perform(get("/api/empresas/99"))
                 .andExpect(status().isNotFound());
@@ -53,16 +62,24 @@ class EmpresaControllerTest {
 
     @Test
     void crearEmpresaValida_devuelve201ConLocation() throws Exception {
-        when(service.crear(any())).thenReturn(new Empresa(5L, "ACME", "Tecnología"));
+        when(service.crear(any())).thenReturn(
+                crearEmpresaPrueba(5L, "ACME", "Tecnologia", "20123456789")
+        );
 
         mockMvc.perform(post("/api/empresas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "nombre": "ACME", "rubro": "Tecnología" }
+                                {
+                                    "ruc": "20123456789",
+                                    "nombre": "ACME",
+                                    "rubro": "Tecnologia"
+                                }
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/empresas/5"))
-                .andExpect(jsonPath("$.id").value(5));
+                .andExpect(jsonPath("$.id").value(5))
+                .andExpect(jsonPath("$.ruc").value("20123456789"))
+                .andExpect(jsonPath("$.nombre").value("ACME"));
     }
 
     @Test
@@ -70,7 +87,11 @@ class EmpresaControllerTest {
         mockMvc.perform(post("/api/empresas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "nombre": "", "rubro": "Tecnología" }
+                                {
+                                    "ruc": "20123456789",
+                                    "nombre": "",
+                                    "rubro": "Tecnologia"
+                                }
                                 """))
                 .andExpect(status().isBadRequest());
     }

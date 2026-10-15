@@ -66,9 +66,11 @@ class EquipoControllerTest {
                         .content("""
                                 { "nombre": "Marketing", "empresaId": 2 }
                                 """))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "/api/equipos/7"))
-                .andExpect(jsonPath("$.id").value(7));
+                                .andExpect(status().isCreated())
+.andExpect(header().string("Location", "/api/equipos/7"))
+.andExpect(jsonPath("$.id").value(7))
+.andExpect(jsonPath("$.nombre").value("Marketing"))
+.andExpect(jsonPath("$.empresaId").value(2));
     }
 
     @Test
@@ -101,11 +103,14 @@ class EquipoControllerTest {
         verify(service).eliminar(3L);
     }
 
+
     @Test
     void eliminarEquipoInexistente_devuelve404() throws Exception {
-        doThrow(new EquipoNoEncontradoException(3L)).when(service).eliminar(eq(3L));
+        doThrow(new EquipoNoEncontradoException(3L))
+                .when(service).eliminar(eq(3L));
 
         mockMvc.perform(delete("/api/equipos/3"))
                 .andExpect(status().isNotFound());
     }
+
 }
