@@ -52,6 +52,18 @@ class EmpresaServiceTest {
     }
 
     @Test
+    void buscarPorNombre_conEmpresaIdConsultaSoloEsaEmpresa() {
+        Empresa empresa = new Empresa(2L, "Beta", "Servicios");
+        when(empresaRepository.buscarPorNombreEnEmpresa(2L, "beta"))
+                .thenReturn(List.of(empresa));
+
+        assertThat(service.buscarPorNombre(" beta ", 2L))
+                .containsExactly(empresa);
+
+        verify(empresaRepository).buscarPorNombreEnEmpresa(2L, "beta");
+    }
+
+    @Test
     void crearEmpresaValida_guardaLaEmpresa() {
         EmpresaRequest request =
                 new EmpresaRequest("20123456789", "ACME", "Tecnologia");

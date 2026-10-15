@@ -84,15 +84,16 @@ class EquipoServiceTest {
     @Test
     void listarPorEmpresa_filtraPorEmpresaId() {
         List<Equipo> equipos = List.of(
-                new Equipo(1L, "Equipo A", empresaId),
-                new Equipo(2L, "Equipo B", empresaId)
+                new Equipo(1L, "Equipo A", empresaId)
         );
 
         when(equipoRepository.findByEmpresaId(empresaId)).thenReturn(equipos);
 
         assertThat(service.listarPorEmpresa(empresaId))
                 .extracting(Equipo::getNombre)
-                .containsExactly("Equipo A", "Equipo B");
+                .containsExactly("Equipo A");
+
+        verify(equipoRepository).findByEmpresaId(empresaId);
     }
 
     @Test
@@ -114,6 +115,57 @@ class EquipoServiceTest {
         assertThatThrownBy(() -> service.buscarPorId(999L))
                 .isInstanceOf(EquipoNoEncontradoException.class)
                 .hasMessageContaining("999");
+    }
+
+    @Test
+    void buscarPorIdEnEmpresa_consultaConIdYEmpresaId() {
+        Equipo equipo = new Equipo(5L, "Ventas", 2L);
+        when(equipoRepository.findByIdAndEmpresaId(5L, 2L))
+                .thenReturn(Optional.of(equipo));
+
+        assertThat(service.buscarPorIdEnEmpresa(5L, 2L))
+                .isSameAs(equipo);
+
+        verify(equipoRepository).findByIdAndEmpresaId(5L, 2L);
+    }
+
+    @Test
+    void buscarPorIdEnEmpresa_deOtraEmpresa_lanza404() {
+        when(equipoRepository.findByIdAndEmpresaId(5L, empresaId))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.buscarPorIdEnEmpresa(5L, empresaId))
+                .isInstanceOf(EquipoNoEncontradoException.class);
+    }
+
+    @Test
+    void actualizarEnEmpresa_soloActualizaElEquipoDeLaEmpresaIndicada() {
+        Equipo equipo = new Equipo(5L, "Ventas", empresaId);
+        when(empresaRepository.findById(empresaId))
+                .thenReturn(Optional.of(crearEmpresa()));
+        when(equipoRepository.findByIdAndEmpresaId(5L, empresaId))
+                .thenReturn(Optional.of(equipo));
+        when(equipoRepository.save(equipo)).thenReturn(equipo);
+
+        Equipo actualizado = service.actualizarEnEmpresa(
+                5L, new EquipoRequest("Marketing", empresaId), empresaId);
+
+        assertThat(actualizado.getNombre()).isEqualTo("Marketing");
+        assertThat(actualizado.getEmpresaId()).isEqualTo(empresaId);
+        verify(equipoRepository).findByIdAndEmpresaId(5L, empresaId);
+        verify(equipoRepository).save(equipo);
+    }
+
+    @Test
+    void eliminarEnEmpresa_soloEliminaElEquipoDeLaEmpresaIndicada() {
+        Equipo equipo = new Equipo(5L, "Ventas", 2L);
+        when(equipoRepository.findByIdAndEmpresaId(5L, 2L))
+                .thenReturn(Optional.of(equipo));
+
+        service.eliminarEnEmpresa(5L, 2L);
+
+        verify(equipoRepository).findByIdAndEmpresaId(5L, 2L);
+        verify(equipoRepository).delete(equipo);
     }
 
     @Test

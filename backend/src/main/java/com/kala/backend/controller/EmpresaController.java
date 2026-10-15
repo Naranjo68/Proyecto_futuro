@@ -11,6 +11,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -116,6 +117,10 @@ public class EmpresaController {
     }
 
     private static Long empresaId(Jwt jwt) {
-        return jwt.getClaim("empresaId");
+        Long empresaId = jwt.getClaim("empresaId");
+        if (empresaId == null) {
+            throw new AccessDeniedException("El token no contiene empresaId");
+        }
+        return empresaId;
     }
 }

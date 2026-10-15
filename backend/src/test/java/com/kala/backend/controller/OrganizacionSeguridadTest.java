@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.kala.backend.exception.EquipoNoEncontradoException;
+import com.kala.backend.dto.EquipoRequest;
 import com.kala.backend.model.Empresa;
 import com.kala.backend.model.Equipo;
 import com.kala.backend.service.EmpresaService;
@@ -83,6 +84,18 @@ class OrganizacionSeguridadTest {
     }
 
     @Test
+    void rrhhSinEmpresaIdRecibe403YNoConsultaEmpresasNiEquipos() throws Exception {
+        mockMvc.perform(get("/api/empresas").with(jwtDe("ROLE_RRHH", null)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/equipos").with(jwtDe("ROLE_RRHH", null)))
+                .andExpect(status().isForbidden());
+
+        verify(empresaService, never()).listar();
+        verify(equipoService, never()).listarPorEmpresa(any());
+    }
+
+    @Test
     void coordinadorNoPuedeModificarEmpresa() throws Exception {
         mockMvc.perform(post("/api/empresas")
                         .with(jwtDe("ROLE_COORDINADOR_BIENESTAR", 1L))
@@ -116,6 +129,84 @@ class OrganizacionSeguridadTest {
         mockMvc.perform(get("/api/equipos/9")
                         .with(jwtDe("ROLE_COORDINADOR_BIENESTAR", 1L)))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void rrhhNoPuedeLeerActualizarNiEliminarEquipoDeOtraEmpresa() throws Exception {
+        when(equipoService.buscarPorIdEnEmpresa(9L, 1L))
+                .thenThrow(new EquipoNoEncontradoException(9L));
+        when(equipoService.actualizarEnEmpresa(9L,
+                new EquipoRequest("Marketing", 1L), 1L))
+                .thenThrow(new EquipoNoEncontradoException(9L));
+        doThrow(new EquipoNoEncontradoException(9L))
+                .when(equipoService).eliminarEnEmpresa(9L, 1L);
+
+        mockMvc.perform(get("/api/equipos/9").with(jwtDe("ROLE_RRHH", 1L)))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(put("/api/equipos/9")
+                        .with(jwtDe("ROLE_RRHH", 1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Marketing","empresaId":1}
+                                """))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(delete("/api/equipos/9").with(jwtDe("ROLE_RRHH", 1L)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void rrhhNoPuedeModificarEmpresasAunqueElRecursoSeaDeOtraEmpresa() throws Exception {
+        mockMvc.perform(put("/api/empresas/2")
+                        .with(jwtDe("ROLE_RRHH", 1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"ruc":"20123456789","nombre":"Beta","rubro":"Servicios"}
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(delete("/api/empresas/2").with(jwtDe("ROLE_RRHH", 1L)))
+                .andExpect(status().isForbidden());
+
+        verify(empresaService, never()).actualizar(any(), any());
+        verify(empresaService, never()).eliminar(any());
+    }
+
+    @Test
+    void adminSinEmpresaIdPuedeConsultarYModificarOtrasEmpresasYEquipos() throws Exception {
+        when(empresaService.buscarPorId(2L))
+                .thenReturn(new Empresa(2L, "Beta", "Servicios"));
+        when(empresaService.actualizar(any(), any()))
+                .thenReturn(new Empresa(2L, "Beta actualizada", "Servicios"));
+        when(equipoService.buscarPorId(9L))
+                .thenReturn(new Equipo(9L, "Soporte", 2L));
+        when(equipoService.actualizar(9L,
+                new EquipoRequest("Marketing", 2L)))
+                .thenReturn(new Equipo(9L, "Marketing", 2L));
+
+        mockMvc.perform(get("/api/empresas/2").with(jwtDe("ROLE_ADMIN", null)))
+                .andExpect(status().isOk());
+        mockMvc.perform(put("/api/empresas/2")
+                        .with(jwtDe("ROLE_ADMIN", null))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"ruc":"20123456789","nombre":"Beta","rubro":"Servicios"}
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(delete("/api/empresas/2").with(jwtDe("ROLE_ADMIN", null)))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/equipos/9").with(jwtDe("ROLE_ADMIN", null)))
+                .andExpect(status().isOk());
+        mockMvc.perform(put("/api/equipos/9")
+                        .with(jwtDe("ROLE_ADMIN", null))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Marketing","empresaId":2}
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(delete("/api/equipos/9").with(jwtDe("ROLE_ADMIN", null)))
+                .andExpect(status().isNoContent());
     }
 
     @Test

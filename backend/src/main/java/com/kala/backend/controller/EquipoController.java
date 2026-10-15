@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -97,6 +98,10 @@ public class EquipoController {
     }
 
     private static Long empresaId(Jwt jwt) {
-        return jwt.getClaim("empresaId");
+        Long empresaId = jwt.getClaim("empresaId");
+        if (empresaId == null) {
+            throw new AccessDeniedException("El token no contiene empresaId");
+        }
+        return empresaId;
     }
 }
