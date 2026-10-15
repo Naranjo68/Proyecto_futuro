@@ -3,6 +3,7 @@ package com.kala.backend.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.kala.backend.FilasPadre;
 import com.kala.backend.model.AdministradorPlataforma;
 import com.kala.backend.model.EmpleadoEquipo;
 import com.kala.backend.model.PersonalEmpresa;
@@ -69,29 +70,34 @@ class IdentidadRepositoryTest {
     void guardarEmpleadoEquipo_seRecuperaPorUsuario() {
         Long usuarioId = usuarios.saveAndFlush(nuevoUsuario()).getId();
 
-        empleados.saveAndFlush(new EmpleadoEquipo(usuarioId, 5L));
+        Long equipoId = FilasPadre.equipo(jdbc, FilasPadre.empresa(jdbc));
 
-        assertThat(empleados.findById(usuarioId).orElseThrow().getEquipoId()).isEqualTo(5L);
+        empleados.saveAndFlush(new EmpleadoEquipo(usuarioId, equipoId));
+
+        assertThat(empleados.findById(usuarioId).orElseThrow().getEquipoId()).isEqualTo(equipoId);
     }
 
     @Test
     void guardarPersonalEmpresa_conRolValido_seRecupera() {
         Long usuarioId = usuarios.saveAndFlush(nuevoUsuario()).getId();
 
-        personal.saveAndFlush(new PersonalEmpresa(usuarioId, 9L, RolPersonal.COORDINADOR_BIENESTAR));
+        Long empresaId = FilasPadre.empresa(jdbc);
+
+        personal.saveAndFlush(new PersonalEmpresa(usuarioId, empresaId, RolPersonal.COORDINADOR_BIENESTAR));
 
         PersonalEmpresa recuperado = personal.findById(usuarioId).orElseThrow();
-        assertThat(recuperado.getEmpresaId()).isEqualTo(9L);
+        assertThat(recuperado.getEmpresaId()).isEqualTo(empresaId);
         assertThat(recuperado.getRol()).isEqualTo(RolPersonal.COORDINADOR_BIENESTAR);
     }
 
     @Test
     void insertarPersonalEmpresaConRolInvalido_loRechazaElCheckDeLaBase() {
         Long usuarioId = usuarios.saveAndFlush(nuevoUsuario()).getId();
+        Long empresaId = FilasPadre.empresa(jdbc);
 
         assertThatThrownBy(() -> jdbc.update(
                 "INSERT INTO personal_empresa (usuario_id, empresa_id, rol) VALUES (?, ?, 'INVALIDO')",
-                usuarioId, 9L))
+                usuarioId, empresaId))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
