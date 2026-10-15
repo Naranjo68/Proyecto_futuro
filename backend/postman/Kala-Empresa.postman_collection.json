@@ -1,0 +1,161 @@
+{
+  "info": {
+    "name": "Kala - Empresa",
+    "description": "Avance 1 - API REST de empresas (/api/empresas). Ejecutar contra el servidor real (mvn spring-boot:run, localhost:8080). El orden importa: 'Crear empresa valida' guarda {{empresaId}} para el resto.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "empresaId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Crear empresa valida (201 + Location)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/empresas", "host": ["{{baseUrl}}"], "path": ["api", "empresas"] },
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"ACME\",\n  \"rubro\": \"Tecnologia\"\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('devuelve id', () => pm.expect(body.id).to.be.a('number'));",
+              "pm.test('header Location', () => pm.expect(pm.response.headers.get('Location')).to.eql('/api/empresas/' + body.id));",
+              "pm.collectionVariables.set('empresaId', body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Listar empresas (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/empresas", "host": ["{{baseUrl}}"], "path": ["api", "empresas"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('es un arreglo', () => pm.expect(pm.response.json()).to.be.an('array'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Buscar empresa por id (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/empresas/{{empresaId}}", "host": ["{{baseUrl}}"], "path": ["api", "empresas", "{{empresaId}}"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('id coincide', () => pm.expect(String(pm.response.json().id)).to.eql(pm.collectionVariables.get('empresaId')));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Buscar empresa inexistente (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/empresas/999999", "host": ["{{baseUrl}}"], "path": ["api", "empresas", "999999"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 404', () => pm.response.to.have.status(404));",
+              "pm.test('cuerpo ErrorResponse', () => {",
+              "  const b = pm.response.json();",
+              "  pm.expect(b.estado).to.eql(404);",
+              "  pm.expect(b.ruta).to.eql('/api/empresas/999999');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crear empresa invalida - nombre vacio (400)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/empresas", "host": ["{{baseUrl}}"], "path": ["api", "empresas"] },
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"\",\n  \"rubro\": \"Tecnologia\"\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Actualizar empresa (200)",
+      "request": {
+        "method": "PUT",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/empresas/{{empresaId}}", "host": ["{{baseUrl}}"], "path": ["api", "empresas", "{{empresaId}}"] },
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"ACME Corp\",\n  \"rubro\": \"Software\"\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('nombre actualizado', () => pm.expect(pm.response.json().nombre).to.eql('ACME Corp'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Eliminar empresa (204)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/empresas/{{empresaId}}", "host": ["{{baseUrl}}"], "path": ["api", "empresas", "{{empresaId}}"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 204', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

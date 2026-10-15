@@ -1,0 +1,185 @@
+{
+  "info": {
+    "name": "Kala - CheckIn + Dashboard",
+    "description": "Avance 1 - Registro de check-in (/api/checkin) y consulta del dashboard (/api/dashboard/{equipoId}). Ejecutar contra el servidor real. El flujo crea su propia empresa y equipo, registra 2 check-ins y consulta el dashboard.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "empresaId", "value": "" },
+    { "key": "equipoId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup - crear empresa",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/empresas", "host": ["{{baseUrl}}"], "path": ["api", "empresas"] },
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"ACME\",\n  \"rubro\": \"Tecnologia\"\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('empresaId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Setup - crear equipo",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/equipos", "host": ["{{baseUrl}}"], "path": ["api", "equipos"] },
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Equipo Dev\",\n  \"empresaId\": {{empresaId}}\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('equipoId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Registrar check-in - respuesta si (202)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/checkin", "host": ["{{baseUrl}}"], "path": ["api", "checkin"] },
+        "body": { "mode": "raw", "raw": "{\n  \"equipoId\": {{equipoId}},\n  \"respuestaRuidosa\": true\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 202', () => pm.response.to.have.status(202));",
+              "pm.test('sin cuerpo', () => pm.expect(pm.response.text()).to.be.empty);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Registrar check-in - respuesta no (202)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/checkin", "host": ["{{baseUrl}}"], "path": ["api", "checkin"] },
+        "body": { "mode": "raw", "raw": "{\n  \"equipoId\": {{equipoId}},\n  \"respuestaRuidosa\": false\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 202', () => pm.response.to.have.status(202));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Check-in body incompleto (400)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/checkin", "host": ["{{baseUrl}}"], "path": ["api", "checkin"] },
+        "body": { "mode": "raw", "raw": "{}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 400', () => pm.response.to.have.status(400));",
+              "pm.test('mensaje nombra los campos', () => {",
+              "  const m = pm.response.json().mensaje;",
+              "  pm.expect(m).to.include('equipoId');",
+              "  pm.expect(m).to.include('respuestaRuidosa');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Check-in sobre equipo inexistente (404)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{baseUrl}}/api/checkin", "host": ["{{baseUrl}}"], "path": ["api", "checkin"] },
+        "body": { "mode": "raw", "raw": "{\n  \"equipoId\": 999999,\n  \"respuestaRuidosa\": true\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard con datos (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/dashboard/{{equipoId}}", "host": ["{{baseUrl}}"], "path": ["api", "dashboard", "{{equipoId}}"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test('2 respuestas, 1 si', () => {",
+              "  pm.expect(b.totalRespuestas).to.eql(2);",
+              "  pm.expect(b.respuestasSi).to.eql(1);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard de equipo sin check-ins (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/dashboard/999999", "host": ["{{baseUrl}}"], "path": ["api", "dashboard", "999999"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

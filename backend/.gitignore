@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+.claude/settings.local.json
+CLAUDE.local.md
+
+### Documentacion local (no se sube) ###
+docs/
