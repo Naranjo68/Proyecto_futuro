@@ -1,7 +1,9 @@
 package com.kala.backend.repository;
 
+import com.kala.backend.FilasPadre;
 import com.kala.backend.model.ConsultaDashboard;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,11 +39,21 @@ class ConsultaDashboardRepositoryTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    private Long usuarioId;
+    private Long equipoId;
+
+    // Las claves foraneas de V7 exigen usuario y equipo reales (se revierten al terminar cada prueba).
+    @BeforeEach
+    void crearPadres() {
+        usuarioId = FilasPadre.usuario(jdbc);
+        equipoId = FilasPadre.equipo(jdbc, FilasPadre.empresa(jdbc));
+    }
+
     @Test
     void rechazaResultadoNoPermitido() {
         ConsultaDashboard consulta = new ConsultaDashboard(
-            1L,
-            10L,
+            usuarioId,
+            equipoId,
             LocalDate.of(2026, 1, 1),
             LocalDate.of(2026, 1, 31),
             "RESULTADO_INVALIDO"
@@ -57,7 +69,7 @@ class ConsultaDashboardRepositoryTest {
     void guardaUnaConsultaValida_yLaBaseAsignaIdYFechaDeConsulta() {
         for (String resultado : new String[] {"OK", "DATOS_INSUFICIENTES"}) {
             ConsultaDashboard guardada = repository.saveAndFlush(new ConsultaDashboard(
-                1L, 10L, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 7), resultado));
+                usuarioId, equipoId, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 7), resultado));
             entityManager.clear();
 
             ConsultaDashboard recuperada = repository.findById(guardada.getId()).orElseThrow();
@@ -69,7 +81,7 @@ class ConsultaDashboardRepositoryTest {
     @Test
     void unRangoDeFechasInvertido_loRechazaLaEntidadAntesDeLlegarALaBase() {
         ConsultaDashboard invertida = new ConsultaDashboard(
-            1L, 10L, LocalDate.of(2026, 1, 31), LocalDate.of(2026, 1, 1), "OK");
+            usuarioId, equipoId, LocalDate.of(2026, 1, 31), LocalDate.of(2026, 1, 1), "OK");
 
         assertThrows(Exception.class, () -> repository.saveAndFlush(invertida));
     }
@@ -80,7 +92,7 @@ class ConsultaDashboardRepositoryTest {
             DataIntegrityViolationException.class,
             () -> jdbc.update(
                 "INSERT INTO consulta_dashboard (usuario_id, equipo_id, fecha_desde, fecha_hasta, resultado) "
-                    + "VALUES (1, 10, DATE '2026-01-31', DATE '2026-01-01', 'OK')")
+                    + "VALUES (?, ?, DATE '2026-01-31', DATE '2026-01-01', 'OK')", usuarioId, equipoId)
         );
     }
 }

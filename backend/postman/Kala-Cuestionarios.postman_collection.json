@@ -1,0 +1,585 @@
+{
+  "info": {
+    "name": "Kala - Cuestionarios",
+    "description": "Avance 2 - Activacion con presupuesto de privacidad, listado por empresa y cuestionarios pendientes del empleado. Requiere Kala - 00 Tokens. cuestionarioId es el id del cuestionario PULSO del seed (en el SQL Editor: SELECT id FROM cuestionario WHERE codigo = 'PULSO').",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8090"
+    }
+  ],
+  "item": [
+    {
+      "name": "Activar sin token (401)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/{{empresaId}}/cuestionarios/{{cuestionarioId}}/activar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "{{empresaId}}",
+            "cuestionarios",
+            "{{cuestionarioId}}",
+            "activar"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "RRHH no activa (403)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/{{empresaId}}/cuestionarios/{{cuestionarioId}}/activar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "{{empresaId}}",
+            "cuestionarios",
+            "{{cuestionarioId}}",
+            "activar"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_rrhh}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "EMPLEADO no activa (403)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/{{empresaId}}/cuestionarios/{{cuestionarioId}}/activar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "{{empresaId}}",
+            "cuestionarios",
+            "{{cuestionarioId}}",
+            "activar"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_empleado}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ADMIN activa el pulso (200 + gasto de privacidad)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/{{empresaId}}/cuestionarios/{{cuestionarioId}}/activar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "{{empresaId}}",
+            "cuestionarios",
+            "{{cuestionarioId}}",
+            "activar"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_admin}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const r = pm.response.json();",
+              "pm.test('el pulso semanal con p=0.75 gasta ~5.49 al mes por persona', () => pm.expect(r.epsilonMensual).to.be.within(5.48, 5.50));",
+              "pm.test('el gasto no excede el maximo', () => pm.expect(r.epsilonMensual).to.be.at.most(r.epsilonMaximo));",
+              "pm.collectionVariables.set('epsilonMensual', r.epsilonMensual);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activar de nuevo es idempotente (200, mismo gasto)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/{{empresaId}}/cuestionarios/{{cuestionarioId}}/activar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "{{empresaId}}",
+            "cuestionarios",
+            "{{cuestionarioId}}",
+            "activar"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_admin}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('no duplica el gasto', () => pm.expect(pm.response.json().epsilonMensual).to.eql(Number(pm.collectionVariables.get('epsilonMensual'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Empresa inexistente (404)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/999999999/cuestionarios/{{cuestionarioId}}/activar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "999999999",
+            "cuestionarios",
+            "{{cuestionarioId}}",
+            "activar"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_admin}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cuestionario inexistente (404)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/{{empresaId}}/cuestionarios/999999999/activar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "{{empresaId}}",
+            "cuestionarios",
+            "999999999",
+            "activar"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_admin}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "RRHH lista los cuestionarios de su empresa (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/{{empresaId}}/cuestionarios",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "{{empresaId}}",
+            "cuestionarios"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_rrhh}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('incluye el pulso semanal', () => { const p = pm.response.json().find(c => c.codigo === 'PULSO'); pm.expect(p).to.exist; pm.expect(p.cadenciaDias).to.eql(7); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ADMIN lista los de cualquier empresa (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/{{empresaId}}/cuestionarios",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "{{empresaId}}",
+            "cuestionarios"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_admin}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "RRHH no ve los de otra empresa (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/999999999/cuestionarios",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "999999999",
+            "cuestionarios"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_rrhh}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "EMPLEADO no lista por empresa (403)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/empresas/{{empresaId}}/cuestionarios",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "empresas",
+            "{{empresaId}}",
+            "cuestionarios"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_empleado}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pendientes sin token (401)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/cuestionarios/pendientes",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "cuestionarios",
+            "pendientes"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "RRHH no usa los pendientes (403)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/cuestionarios/pendientes",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "cuestionarios",
+            "pendientes"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_rrhh}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "EMPLEADO recibe lo necesario para aleatorizar (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/cuestionarios/pendientes",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "cuestionarios",
+            "pendientes"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_empleado}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const lista = pm.response.json();",
+              "pm.test('trae el pulso', () => pm.expect(lista.map(c => c.codigo)).to.include('PULSO'));",
+              "const pulso = lista.find(c => c.codigo === 'PULSO'); const item = pulso.items[0];",
+              "pm.test('el item trae mecanismo y p', () => { pm.expect(item.mecanismo).to.eql('RANDOMIZED_RESPONSE'); pm.expect(item.probabilidadVerdad).to.eql(0.75); });",
+              "pm.test('la escala es binaria con dos opciones', () => { pm.expect(item.escala.opciones).to.have.length(2); });",
+              "pm.test('no se expone ninguna entidad interna', () => pm.expect(pm.response.text()).to.not.match(/empresa_id|password/i));",
+              "pm.environment.set('itemId', item.itemId); pm.environment.set('configuracionLdpId', item.configuracionLdpId); pm.environment.set('probabilidadVerdad', item.probabilidadVerdad);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

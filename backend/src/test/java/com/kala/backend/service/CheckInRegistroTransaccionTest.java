@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -41,11 +42,15 @@ class CheckInRegistroTransaccionTest {
     private CheckInRegistroService service;
     @Autowired
     private SesionCheckinRepository sesiones;
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void siFallaLaSuma_laSesionNoQuedaGuardada() {
-        when(items.buscar(9L)).thenReturn(Optional.of(new ItemCuestionarioInfo(3L, 2L)));
+        // El test corre sin transaccion propia: se usa el cuestionario PULSO del seed (V6) para no escribir filas padre.
+        Long pulso = jdbc.queryForObject("SELECT id FROM cuestionario WHERE codigo = 'PULSO'", Long.class);
+        when(items.buscar(9L)).thenReturn(Optional.of(new ItemCuestionarioInfo(pulso, 2L)));
         when(agregados.registrarRespuesta(any(), any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("fallo simulado de la suma"));
         long antes = sesiones.count();

@@ -1,22 +1,121 @@
 {
   "info": {
-    "name": "Kala - CheckIn + Dashboard",
-    "description": "Avance 1 - Registro de check-in (/api/checkin) y consulta del dashboard (/api/dashboard/{equipoId}). Ejecutar contra el servidor real. El flujo crea su propia empresa y equipo, registra 2 check-ins y consulta el dashboard.",
+    "name": "Kala - CheckIn y Dashboard",
+    "description": "Avance 2 - El empleado aleatoriza su respuesta y la envia; RRHH consulta la estimacion semanal. Requiere Kala - 00 Tokens y Kala - Cuestionarios (que guarda itemId y configuracionLdpId). Con menos de 30 respuestas el dashboard devuelve DATOS_INSUFICIENTES; para ver OK use el script de la demostracion.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080" },
-    { "key": "empresaId", "value": "" },
-    { "key": "equipoId", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8090"
+    },
+    {
+      "key": "semana",
+      "value": ""
+    },
+    {
+      "key": "semanaNoLunes",
+      "value": ""
+    },
+    {
+      "key": "respuestaRuidosa",
+      "value": "true"
+    }
   ],
   "item": [
     {
-      "name": "Setup - crear empresa",
+      "name": "Check-in sin token (401)",
       "request": {
         "method": "POST",
-        "header": [ { "key": "Content-Type", "value": "application/json" } ],
-        "url": { "raw": "{{baseUrl}}/api/empresas", "host": ["{{baseUrl}}"], "path": ["api", "empresas"] },
-        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"ACME\",\n  \"rubro\": \"Tecnologia\"\n}" }
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/checkin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "checkin"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"itemId\": {{itemId}},\n  \"configuracionLdpId\": {{configuracionLdpId}},\n  \"respuestaRuidosa\": {{respuestaRuidosa}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Lunes de la semana actual en America/Lima (la ventana del dashboard) y un dia que no es lunes.",
+              "const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }));",
+              "d.setDate(d.getDate() - ((d.getDay() + 6) % 7));",
+              "const iso = x => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');",
+              "pm.collectionVariables.set('semana', iso(d));",
+              "d.setDate(d.getDate() + 1);",
+              "pm.collectionVariables.set('semanaNoLunes', iso(d));",
+              "// El dispositivo aleatoriza ANTES de enviar: dice la verdad con probabilidad p y lo contrario con 1-p.",
+              "const p = Number(pm.environment.get('probabilidadVerdad') || 0.75);",
+              "const real = Math.random() < 0.3;",
+              "pm.collectionVariables.set('respuestaRuidosa', String(Math.random() < p ? real : !real));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "RRHH no envia check-ins (403)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/checkin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "checkin"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_rrhh}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"itemId\": {{itemId}},\n  \"configuracionLdpId\": {{configuracionLdpId}},\n  \"respuestaRuidosa\": {{respuestaRuidosa}}\n}"
+        }
       },
       "event": [
         {
@@ -24,20 +123,46 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status 201', () => pm.response.to.have.status(201));",
-              "pm.collectionVariables.set('empresaId', pm.response.json().id);"
+              "pm.test('status 403', () => pm.response.to.have.status(403));"
             ]
           }
         }
       ]
     },
     {
-      "name": "Setup - crear equipo",
+      "name": "Configuracion que no es la vigente (422, no consume la semana)",
       "request": {
         "method": "POST",
-        "header": [ { "key": "Content-Type", "value": "application/json" } ],
-        "url": { "raw": "{{baseUrl}}/api/equipos", "host": ["{{baseUrl}}"], "path": ["api", "equipos"] },
-        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Equipo Dev\",\n  \"empresaId\": {{empresaId}}\n}" }
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/checkin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "checkin"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_empleado}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"itemId\": {{itemId}},\n  \"configuracionLdpId\": 999999999,\n  \"respuestaRuidosa\": true\n}"
+        }
       },
       "event": [
         {
@@ -45,86 +170,46 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status 201', () => pm.response.to.have.status(201));",
-              "pm.collectionVariables.set('equipoId', pm.response.json().id);"
+              "pm.test('status 422', () => pm.response.to.have.status(422));"
             ]
           }
         }
       ]
     },
     {
-      "name": "Registrar check-in - respuesta si (202)",
+      "name": "Item inexistente (404)",
       "request": {
         "method": "POST",
-        "header": [ { "key": "Content-Type", "value": "application/json" } ],
-        "url": { "raw": "{{baseUrl}}/api/checkin", "host": ["{{baseUrl}}"], "path": ["api", "checkin"] },
-        "body": { "mode": "raw", "raw": "{\n  \"equipoId\": {{equipoId}},\n  \"respuestaRuidosa\": true\n}" }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 202', () => pm.response.to.have.status(202));",
-              "pm.test('sin cuerpo', () => pm.expect(pm.response.text()).to.be.empty);"
-            ]
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
           }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/checkin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "checkin"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_empleado}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"itemId\": 999999999,\n  \"configuracionLdpId\": {{configuracionLdpId}},\n  \"respuestaRuidosa\": true\n}"
         }
-      ]
-    },
-    {
-      "name": "Registrar check-in - respuesta no (202)",
-      "request": {
-        "method": "POST",
-        "header": [ { "key": "Content-Type", "value": "application/json" } ],
-        "url": { "raw": "{{baseUrl}}/api/checkin", "host": ["{{baseUrl}}"], "path": ["api", "checkin"] },
-        "body": { "mode": "raw", "raw": "{\n  \"equipoId\": {{equipoId}},\n  \"respuestaRuidosa\": false\n}" }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 202', () => pm.response.to.have.status(202));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Check-in body incompleto (400)",
-      "request": {
-        "method": "POST",
-        "header": [ { "key": "Content-Type", "value": "application/json" } ],
-        "url": { "raw": "{{baseUrl}}/api/checkin", "host": ["{{baseUrl}}"], "path": ["api", "checkin"] },
-        "body": { "mode": "raw", "raw": "{}" }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 400', () => pm.response.to.have.status(400));",
-              "pm.test('mensaje nombra los campos', () => {",
-              "  const m = pm.response.json().mensaje;",
-              "  pm.expect(m).to.include('equipoId');",
-              "  pm.expect(m).to.include('respuestaRuidosa');",
-              "});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Check-in sobre equipo inexistente (404)",
-      "request": {
-        "method": "POST",
-        "header": [ { "key": "Content-Type", "value": "application/json" } ],
-        "url": { "raw": "{{baseUrl}}/api/checkin", "host": ["{{baseUrl}}"], "path": ["api", "checkin"] },
-        "body": { "mode": "raw", "raw": "{\n  \"equipoId\": 999999,\n  \"respuestaRuidosa\": true\n}" }
       },
       "event": [
         {
@@ -139,11 +224,332 @@
       ]
     },
     {
-      "name": "Dashboard con datos (200)",
+      "name": "Cuerpo incompleto (400, sin eco del cuerpo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/checkin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "checkin"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_empleado}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"itemId\": {{itemId}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 400', () => pm.response.to.have.status(400));",
+              "pm.test('el error no repite lo enviado', () => pm.expect(pm.response.text()).to.not.include('respuestaRuidosa=true'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "EMPLEADO envia su check-in (202 la primera vez)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/checkin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "checkin"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_empleado}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"itemId\": {{itemId}},\n  \"configuracionLdpId\": {{configuracionLdpId}},\n  \"respuestaRuidosa\": {{respuestaRuidosa}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// El dispositivo aleatoriza ANTES de enviar: dice la verdad con probabilidad p y lo contrario con 1-p.",
+              "const p = Number(pm.environment.get('probabilidadVerdad') || 0.75);",
+              "const real = Math.random() < 0.3;",
+              "pm.collectionVariables.set('respuestaRuidosa', String(Math.random() < p ? real : !real));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('202 si es la primera vez de la semana, 409 si ya respondio', () => pm.expect([202, 409]).to.include(pm.response.code));",
+              "pm.test('no devuelve cuerpo: el servidor no confirma que respondio', () => { if (pm.response.code === 202) pm.expect(pm.response.text()).to.eql(''); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Segundo envio de la misma semana (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/checkin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "checkin"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_empleado}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"itemId\": {{itemId}},\n  \"configuracionLdpId\": {{configuracionLdpId}},\n  \"respuestaRuidosa\": {{respuestaRuidosa}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// El dispositivo aleatoriza ANTES de enviar: dice la verdad con probabilidad p y lo contrario con 1-p.",
+              "const p = Number(pm.environment.get('probabilidadVerdad') || 0.75);",
+              "const real = Math.random() < 0.3;",
+              "pm.collectionVariables.set('respuestaRuidosa', String(Math.random() < p ? real : !real));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard sin token (401)",
       "request": {
         "method": "GET",
         "header": [],
-        "url": { "raw": "{{baseUrl}}/api/dashboard/{{equipoId}}", "host": ["{{baseUrl}}"], "path": ["api", "dashboard", "{{equipoId}}"] }
+        "url": {
+          "raw": "{{baseUrl}}/api/dashboard/{{equipoId}}?semana={{semana}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dashboard",
+            "{{equipoId}}"
+          ],
+          "query": [
+            {
+              "key": "semana",
+              "value": "{{semana}}"
+            }
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "EMPLEADO no ve el dashboard (403)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/dashboard/{{equipoId}}?semana={{semana}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dashboard",
+            "{{equipoId}}"
+          ],
+          "query": [
+            {
+              "key": "semana",
+              "value": "{{semana}}"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_empleado}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ADMIN no ve el dashboard (403)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/dashboard/{{equipoId}}?semana={{semana}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dashboard",
+            "{{equipoId}}"
+          ],
+          "query": [
+            {
+              "key": "semana",
+              "value": "{{semana}}"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_admin}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "RRHH consulta la semana (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/dashboard/{{equipoId}}?semana={{semana}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dashboard",
+            "{{equipoId}}"
+          ],
+          "query": [
+            {
+              "key": "semana",
+              "value": "{{semana}}"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_rrhh}}",
+              "type": "string"
+            }
+          ]
+        }
       },
       "event": [
         {
@@ -152,22 +558,177 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('status 200', () => pm.response.to.have.status(200));",
-              "const b = pm.response.json();",
-              "pm.test('2 respuestas, 1 si', () => {",
-              "  pm.expect(b.totalRespuestas).to.eql(2);",
-              "  pm.expect(b.respuestasSi).to.eql(1);",
-              "});"
+              "const r = pm.response.json();",
+              "pm.test('el resultado es OK o DATOS_INSUFICIENTES', () => pm.expect(['OK', 'DATOS_INSUFICIENTES']).to.include(r.resultado));",
+              "pm.test('hay al menos la respuesta del empleado', () => pm.expect(r.totalRespuestas).to.be.at.least(1));",
+              "pm.test('con datos insuficientes NO hay proporcion; con OK si, entre 0 y 1', () => { const i = r.items[0]; if (r.resultado === 'DATOS_INSUFICIENTES') { pm.expect(i.proporcionEstimada).to.be.null; pm.expect(i.margenError95).to.be.null; } else { pm.expect(i.proporcionEstimada).to.be.within(0, 1); pm.expect(i.margenError95).to.be.above(0); } });",
+              "pm.test('no expone a las personas', () => pm.expect(pm.response.text()).to.not.include(pm.environment.get('empleadoEmail')));"
             ]
           }
         }
       ]
     },
     {
-      "name": "Dashboard de equipo sin check-ins (404)",
+      "name": "La semana debe empezar en lunes (400)",
       "request": {
         "method": "GET",
         "header": [],
-        "url": { "raw": "{{baseUrl}}/api/dashboard/999999", "host": ["{{baseUrl}}"], "path": ["api", "dashboard", "999999"] }
+        "url": {
+          "raw": "{{baseUrl}}/api/dashboard/{{equipoId}}?semana={{semanaNoLunes}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dashboard",
+            "{{equipoId}}"
+          ],
+          "query": [
+            {
+              "key": "semana",
+              "value": "{{semanaNoLunes}}"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_rrhh}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Falta la semana (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/dashboard/{{equipoId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dashboard",
+            "{{equipoId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_rrhh}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fecha mal formada (400)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/dashboard/{{equipoId}}?semana=ayer",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dashboard",
+            "{{equipoId}}"
+          ],
+          "query": [
+            {
+              "key": "semana",
+              "value": "ayer"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_rrhh}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Equipo de otra empresa o inexistente (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/dashboard/999999999?semana={{semana}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dashboard",
+            "999999999"
+          ],
+          "query": [
+            {
+              "key": "semana",
+              "value": "{{semana}}"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token_rrhh}}",
+              "type": "string"
+            }
+          ]
+        }
       },
       "event": [
         {

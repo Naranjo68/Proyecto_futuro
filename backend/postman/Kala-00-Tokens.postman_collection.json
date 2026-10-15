@@ -1,0 +1,156 @@
+{
+  "info": {
+    "name": "Kala - 00 Tokens",
+    "description": "Avance 2 - Inicia sesion con cada rol y guarda token_admin, token_rrhh y token_empleado (y empresaId / equipoId) en el entorno. Ejecutar PRIMERO. Requiere las credenciales de las tres cuentas en el entorno Kala - Local.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8090"
+    }
+  ],
+  "item": [
+    {
+      "name": "Login ADMIN (200 + claims)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const claims = JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));",
+              "pm.test('ROLE_ADMIN', () => pm.expect(claims.roles).to.eql(['ROLE_ADMIN']));",
+              "pm.test('el ADMIN no lleva empresaId ni equipoId', () => { pm.expect(claims).to.not.have.property('empresaId'); pm.expect(claims).to.not.have.property('equipoId'); });",
+              "pm.test('vigencia de 30 minutos', () => pm.expect(claims.exp - claims.iat).to.eql(1800));",
+              "pm.test('no devuelve la contrasena', () => pm.expect(pm.response.text()).to.not.include(pm.environment.get('adminPassword')));",
+              "pm.environment.set('token_admin', pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login RRHH (200 + claims)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{rrhhEmail}}\",\n  \"password\": \"{{rrhhPassword}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const claims = JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));",
+              "pm.test('rol de personal de empresa', () => pm.expect(claims.roles.some(r => ['ROLE_RRHH', 'ROLE_COORDINADOR_BIENESTAR'].includes(r))).to.be.true);",
+              "pm.test('lleva empresaId y no equipoId', () => { pm.expect(claims.empresaId).to.be.a('number'); pm.expect(claims).to.not.have.property('equipoId'); });",
+              "pm.environment.set('token_rrhh', pm.response.json().accessToken);",
+              "pm.environment.set('empresaId', claims.empresaId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login EMPLEADO (200 + claims)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{empleadoEmail}}\",\n  \"password\": \"{{empleadoPassword}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const claims = JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));",
+              "pm.test('ROLE_EMPLEADO', () => pm.expect(claims.roles).to.eql(['ROLE_EMPLEADO']));",
+              "pm.test('lleva equipoId y empresaId', () => { pm.expect(claims.equipoId).to.be.a('number'); pm.expect(claims.empresaId).to.be.a('number'); });",
+              "pm.test('el token no contiene la contrasena ni su hash', () => pm.expect(JSON.stringify(claims)).to.not.match(/password|hash/i));",
+              "pm.environment.set('token_empleado', pm.response.json().accessToken);",
+              "pm.environment.set('equipoId', claims.equipoId);",
+              "pm.environment.set('empresaId_empleado', claims.empresaId);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

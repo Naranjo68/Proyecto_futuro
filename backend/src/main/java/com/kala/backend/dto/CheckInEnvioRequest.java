@@ -9,4 +9,11 @@ public record CheckInEnvioRequest(
         @NotNull Long configuracionLdpId,
         @NotNull Boolean respuestaRuidosa
 ) {
+
+    // Privacidad: los frameworks imprimen toString() al registrar argumentos (Spring MVC y Hibernate Validator lo
+    // hacen en nivel TRACE). Se redacta para que el cuerpo del check-in no aparezca nunca en un log.
+    @Override
+    public String toString() {
+        return "CheckInEnvioRequest[redactado]";
+    }
 }
