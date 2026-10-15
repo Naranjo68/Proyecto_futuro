@@ -11,6 +11,7 @@ import com.kala.backend.controller.EquipoController;
 import com.kala.backend.service.EquipoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -18,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 // Se prueba el handler a través de un controller real (EquipoController):
 // se verifica el código y la forma del cuerpo ErrorResponse.
+@AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(EquipoController.class)
 class GlobalExceptionHandlerTest {
 
